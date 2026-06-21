@@ -88,9 +88,22 @@ interface WorkoutDao {
     @Query("SELECT s.* FROM workout_sets s INNER JOIN workouts w ON s.workoutId = w.id WHERE s.exerciseId = :exerciseId AND s.isCompleted = 1 AND w.isCompleted = 1 ORDER BY s.weight DESC, s.reps DESC LIMIT 1")
     fun getBestSetForExercise(exerciseId: Int): WorkoutSetEntity?
 
-    @Query("SELECT s.* FROM workout_sets s INNER JOIN workouts w ON s.workoutId = w.id WHERE s.exerciseId = :exerciseId AND s.isCompleted = 1 AND w.isCompleted = 1 ORDER BY s.distance DESC, s.time ASC LIMIT 1")
+    @Query("SELECT s.* FROM workout_sets s INNER JOIN workouts w ON s.workoutId = w.id WHERE s.exerciseId = :exerciseId AND s.isCompleted = 1 AND w.isCompleted = 1 ORDER BY s.distance DESC, COALESCE(s.inclinePct, 0.0) DESC, s.time ASC LIMIT 1")
     fun getBestDistanceSetForExercise(exerciseId: Int): WorkoutSetEntity?
 
     @Query("SELECT s.* FROM workout_sets s INNER JOIN workouts w ON s.workoutId = w.id WHERE s.exerciseId = :exerciseId AND s.isCompleted = 1 AND w.isCompleted = 1 ORDER BY s.time DESC LIMIT 1")
     fun getBestTimeSetForExercise(exerciseId: Int): WorkoutSetEntity?
+
+    @Query("SELECT COUNT(DISTINCT s.workoutId) FROM workout_sets s INNER JOIN workouts w ON s.workoutId = w.id WHERE s.exerciseId = :exerciseId AND s.isCompleted = 1 AND w.isCompleted = 1")
+    fun getCompletedWorkoutCountForExercise(exerciseId: Int): Int
+
+    // User Profile Queries
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertUserProfile(profile: UserProfileEntity)
+
+    @Query("SELECT * FROM user_profile WHERE id = 1 LIMIT 1")
+    fun getUserProfile(): UserProfileEntity?
+
+    @Query("SELECT * FROM user_profile WHERE id = 1 LIMIT 1")
+    fun getUserProfileFlow(): Flow<UserProfileEntity?>
 }

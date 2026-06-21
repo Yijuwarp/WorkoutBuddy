@@ -31,11 +31,13 @@ class WorkoutRepository(private val workoutDao: WorkoutDao) {
         workoutDao.getActiveWorkoutDraft()
     }
 
-    suspend fun createActiveWorkoutDraft(category: String): WorkoutEntity = withContext(Dispatchers.IO) {
+    suspend fun createActiveWorkoutDraft(category: String, startingStrength: Double, startingStamina: Double): WorkoutEntity = withContext(Dispatchers.IO) {
         val newWorkout = WorkoutEntity(
             date = System.currentTimeMillis(),
             category = category,
-            isCompleted = false
+            isCompleted = false,
+            startingStrengthScore = startingStrength,
+            startingStaminaScore = startingStamina
         )
         val id = workoutDao.insertWorkout(newWorkout)
         newWorkout.copy(id = id)
@@ -115,5 +117,19 @@ class WorkoutRepository(private val workoutDao: WorkoutDao) {
 
     suspend fun getBestTimeSetForExercise(exerciseId: Int): WorkoutSetEntity? = withContext(Dispatchers.IO) {
         workoutDao.getBestTimeSetForExercise(exerciseId)
+    }
+
+    suspend fun getCompletedWorkoutCountForExercise(exerciseId: Int): Int = withContext(Dispatchers.IO) {
+        workoutDao.getCompletedWorkoutCountForExercise(exerciseId)
+    }
+
+    fun getUserProfileFlow(): Flow<UserProfileEntity?> = workoutDao.getUserProfileFlow()
+
+    suspend fun getUserProfile(): UserProfileEntity? = withContext(Dispatchers.IO) {
+        workoutDao.getUserProfile()
+    }
+
+    suspend fun saveUserProfile(profile: UserProfileEntity) = withContext(Dispatchers.IO) {
+        workoutDao.insertUserProfile(profile)
     }
 }

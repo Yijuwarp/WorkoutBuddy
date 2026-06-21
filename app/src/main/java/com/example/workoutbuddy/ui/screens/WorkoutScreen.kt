@@ -38,6 +38,9 @@ fun WorkoutScreen(
     val durationSec by viewModel.workoutDuration.collectAsState()
     val exercises by viewModel.activeExerciseStates.collectAsState()
     val summary by viewModel.workoutSummary.collectAsState()
+    val recordBrokenCelebration by viewModel.recordBrokenCelebration.collectAsState()
+    val displayedIntensity by viewModel.displayedIntensity.collectAsState()
+    val displayedCalories by viewModel.displayedCalories.collectAsState()
 
     // Countdown and Cooldown states
     val cooldownExercise by viewModel.cooldownExerciseName.collectAsState()
@@ -55,13 +58,32 @@ fun WorkoutScreen(
     var showAddExerciseDialog by remember { mutableStateOf(false) }
     var showReplaceDialogForExerciseId by remember { mutableStateOf<Int?>(null) }
     var selectedExerciseId by remember { mutableStateOf<Int?>(null) }
+    var showRestModal by remember { mutableStateOf(false) }
+    var showCountdownModal by remember { mutableStateOf(false) }
+
+    LaunchedEffect(cooldownExercise) {
+        if (cooldownExercise != null) {
+            showRestModal = true
+        } else {
+            showRestModal = false
+        }
+    }
+
+    LaunchedEffect(isCountdownActive) {
+        if (isCountdownActive) {
+            showCountdownModal = true
+        } else {
+            showCountdownModal = false
+        }
+    }
 
     val selectedExerciseState = remember(selectedExerciseId, exercises) {
         exercises.find { it.exercise.id == selectedExerciseId }
     }
 
-    Box(modifier = modifier.fillMaxSize().imePadding()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    WavyFloatingNumbersContainer(viewModel = viewModel) {
+        Box(modifier = modifier.fillMaxSize().imePadding()) {
+            Column(modifier = Modifier.fillMaxSize()) {
             
             // Header Bar
             Row(
@@ -86,7 +108,7 @@ fun WorkoutScreen(
                                 else -> BlueSecondary
                             }
                             Text(
-                                text = workout.category,
+                                text = workout.category.replace("_", " "),
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
                                 color = badgeColor
                             )
@@ -167,14 +189,83 @@ fun WorkoutScreen(
                 }
             }
 
-            // Exercise List
+            // Exercise List (Dial is first scrollable item, not sticky)
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Dashboard Intensity & Burn Dials — scrolls with list
+                item {
+                    activeWorkout?.let { workout ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                val totalSetsCount = remember(exercises) {
+                                    exercises.flatMap { it.sets }.size.coerceAtLeast(1)
+                                }
+                                val targetScore = workout.startingStrengthScore * totalSetsCount
+                                val targetCalories = totalSetsCount * 20.0 + 100.0
+
+                                val currentBurnedCalories = workout.totalCalories
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    WorkoutIntensityDial(
+                                        intensityScore = displayedIntensity,
+                                        targetScore = targetScore
+                                    )
+
+                                    WorkoutBurnDial(
+                                        burnedCalories = displayedCalories,
+                                        targetCalories = targetCalories
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceAround,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("Strength target", fontSize = 11.sp, color = TextMuted)
+                                        Text("${workout.startingStrengthScore.toInt()}", fontWeight = FontWeight.Bold, color = TextDark)
+                                    }
+                                    Box(modifier = Modifier.width(1.dp).height(24.dp).background(BorderLight))
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("Burn target", fontSize = 11.sp, color = TextMuted)
+                                        Text("${targetCalories.toInt()} kcal", fontWeight = FontWeight.Bold, color = TextDark)
+                                    }
+                                    Box(modifier = Modifier.width(1.dp).height(24.dp).background(BorderLight))
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("Active sets", fontSize = 11.sp, color = TextMuted)
+                                        Text("$totalSetsCount sets", fontWeight = FontWeight.Bold, color = TextDark)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 if (exercises.isEmpty()) {
                     item {
                         Box(
@@ -196,6 +287,7 @@ fun WorkoutScreen(
                                 viewModel.removeExerciseFromWorkout(exerciseState.exercise.id)
                             },
                             onClick = {
+                                viewModel.onExerciseScreenOpened()
                                 selectedExerciseId = exerciseState.exercise.id
                             }
                         )
@@ -203,21 +295,21 @@ fun WorkoutScreen(
 
                     // Add Exercise button
                     item {
-                        Row(
+                        Button(
+                            onClick = { showAddExerciseDialog = true },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            horizontalArrangement = Arrangement.Center
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = LightBlueContainer,
+                                contentColor = BluePrimary
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.5.dp, BluePrimary.copy(alpha = 0.2f))
                         ) {
-                            Button(
-                                onClick = { showAddExerciseDialog = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Add Exercise", fontWeight = FontWeight.Bold, color = Color.White)
-                            }
+                            Icon(Icons.Default.Add, contentDescription = null, tint = BluePrimary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Add Exercise", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge, color = BluePrimary)
                         }
                     }
                     
@@ -229,12 +321,24 @@ fun WorkoutScreen(
             }
         }
 
-        // Float Cooldown Timer Banner above the button
-        if (cooldownExercise != null && selectedExerciseId == null) {
+        // Rest Timer Modal (shows on top of everything)
+        if (cooldownExercise != null && showRestModal) {
+            RestTimerModal(
+                exerciseName = cooldownExercise ?: "",
+                remainingSeconds = cooldownRemaining,
+                totalDuration = cooldownTotal,
+                onSkip = { viewModel.skipCooldown() },
+                onDismissRequest = { showRestModal = false }
+            )
+        }
+
+        // Float Cooldown Timer Banner (minimized state) above the button
+        if (cooldownExercise != null && !showRestModal && selectedExerciseId == null) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = if (isStarted) 80.dp else 16.dp)
+                    .clickable { showRestModal = true }
             ) {
                 CooldownBanner(
                     exerciseName = cooldownExercise ?: "",
@@ -245,23 +349,29 @@ fun WorkoutScreen(
             }
         }
 
-        // Active State Floating Buttons at bottom right
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            if (!isStarted) {
-                // START WORKOUT BUTTON (Floating)
-                ExtendedFloatingActionButton(
-                    text = { Text("Start Workout", fontWeight = FontWeight.Bold, color = Color.White) },
-                    icon = { Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White) },
-                    onClick = { viewModel.startWorkout() },
-                    containerColor = BluePrimary,
-                    shape = RoundedCornerShape(12.dp)
-                )
-            } else {
-                // COMPLETE WORKOUT BUTTON
+        // Bottom Start Workout button or Floating Complete Workout button
+        if (!isStarted) {
+            Button(
+                onClick = { viewModel.startWorkout() },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Start Workout", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
                 ExtendedFloatingActionButton(
                     text = { Text("Complete Workout", fontWeight = FontWeight.Bold, color = Color.White) },
                     icon = { Icon(Icons.Default.Check, contentDescription = null, tint = Color.White) },
@@ -273,7 +383,7 @@ fun WorkoutScreen(
         }
 
         // Countdown Timer Overlay Dialog
-        if (isCountdownActive && countdownExercise != null) {
+        if (isCountdownActive && showCountdownModal && countdownExercise != null) {
             CountdownTimerDialog(
                 exerciseName = countdownExercise ?: "",
                 remainingSeconds = countdownRemaining,
@@ -281,8 +391,26 @@ fun WorkoutScreen(
                 isPaused = isCountdownPaused,
                 onTapTimer = { viewModel.toggleCountdownPause() },
                 onDone = { viewModel.completeCountdownEarly() },
-                onCancel = { viewModel.cancelCountdown() }
+                onCancel = { viewModel.cancelCountdown() },
+                onMinimize = { showCountdownModal = false }
             )
+        }
+
+        // Float Countdown Timer Banner (minimized state) above the button
+        if (isCountdownActive && !showCountdownModal && selectedExerciseId == null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = if (isStarted) 80.dp else 16.dp)
+                    .clickable { showCountdownModal = true }
+            ) {
+                CountdownBanner(
+                    exerciseName = countdownExercise ?: "",
+                    remainingSeconds = countdownRemaining,
+                    totalDuration = countdownTotal,
+                    onDone = { viewModel.completeCountdownEarly() }
+                )
+            }
         }
 
         // Summary Overlay Dialog on Completion
@@ -294,6 +422,111 @@ fun WorkoutScreen(
                     viewModel.updateCompletedWorkoutDuration(sum.workoutId, newDur)
                 }
             )
+        }
+
+        // Celebratory Record Broken Dialog
+        recordBrokenCelebration?.let { celeb ->
+            Dialog(onDismissRequest = { viewModel.dismissRecordCelebration() }) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.5.dp, GoldPR),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Celebration Gold Badge with Icon
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFFFBEB))
+                                .border(2.dp, GoldPR, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EmojiEvents,
+                                contentDescription = "Trophy",
+                                tint = GoldPR,
+                                modifier = Modifier.size(44.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Record Broken!",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                            color = GoldPR,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = celeb.exerciseName,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = TextDark,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Comparison Card
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = LightBlueContainer),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.5.dp, BorderLight)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Previous", fontSize = 12.sp, color = TextMuted, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(celeb.oldRecord, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), color = TextDark)
+                                }
+
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = "to",
+                                    tint = BluePrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("New Best", fontSize = 12.sp, color = GoldPR, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(celeb.newRecord, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), color = GoldPR)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Button(
+                            onClick = { viewModel.dismissRecordCelebration() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldPR),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Awesome!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                    }
+                }
+            }
         }
 
         // Add Exercise Dialog
@@ -328,7 +561,9 @@ fun WorkoutScreen(
                 onDismiss = { showReplaceDialogForExerciseId = null },
                 onExerciseSelected = { newExercise ->
                     viewModel.replaceExerciseInWorkout(oldId, newExercise.id)
+                    viewModel.onExerciseScreenClosed(oldId)
                     showReplaceDialogForExerciseId = null
+                    selectedExerciseId = null
                 }
             )
         }
@@ -342,12 +577,15 @@ fun WorkoutScreen(
                 cooldownRemaining = cooldownRemaining,
                 cooldownDuration = cooldownTotal,
                 onSkipCooldown = { viewModel.skipCooldown() },
-                onDismissRequest = { selectedExerciseId = null },
-                onSetValuesChanged = { setId, w, r, t, d ->
-                    viewModel.updateSetValues(setId, w, r, t, d)
+                onDismissRequest = {
+                    viewModel.onExerciseScreenClosed(exerciseState.exercise.id)
+                    selectedExerciseId = null
                 },
-                onSetCompleteToggled = { setId, complete ->
-                    viewModel.toggleSetCompletion(setId, complete)
+                onSetValuesChanged = { setId, w, r, t, d, inc ->
+                    viewModel.updateSetValues(setId, w, r, t, d, inc)
+                },
+                onSetCompleteToggled = { setId, complete, w, r, t, d, inc ->
+                    viewModel.toggleSetCompletion(setId, complete, w, r, t, d, inc)
                 },
                 onStartCountdown = { setId, name, seconds ->
                     viewModel.startCountdown(setId, name, seconds)
@@ -363,11 +601,16 @@ fun WorkoutScreen(
                 },
                 onRemoveExercise = {
                     viewModel.removeExerciseFromWorkout(exerciseState.exercise.id)
+                    viewModel.onExerciseScreenClosed(exerciseState.exercise.id)
                     selectedExerciseId = null
+                },
+                onStartWorkout = {
+                    viewModel.startWorkout()
                 }
             )
         }
     }
+}
 }
 
 // --- Workout Summary Dialog ---
@@ -420,32 +663,87 @@ fun WorkoutSummaryDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Stats Cards Layout
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Calories card
-                    StatBox(
-                        value = "${summary.totalCalories.toInt()}",
-                        label = "kcal",
-                        subtext = "Burned",
-                        modifier = Modifier.weight(1f)
-                    )
-                    // Steps card
-                    StatBox(
-                        value = "${summary.totalSteps}",
-                        label = "steps",
-                        subtext = "Moved",
-                        modifier = Modifier.weight(1f)
-                    )
-                    // PRs card
-                    StatBox(
-                        value = "${summary.prCount}",
-                        label = "PRs",
-                        subtext = "Records",
-                        modifier = Modifier.weight(1f),
-                        highlight = true
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Calories card
+                        StatBox(
+                            value = "${summary.totalCalories.toInt()}",
+                            label = "kcal",
+                            subtext = "Burned",
+                            modifier = Modifier.weight(1f)
+                        )
+                        // Steps card
+                        StatBox(
+                            value = "${summary.totalSteps}",
+                            label = "steps",
+                            subtext = "Moved",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // PRs card
+                        StatBox(
+                            value = "${summary.prCount}",
+                            label = "Records",
+                            subtext = "Broken",
+                            modifier = Modifier.weight(1f),
+                            highlight = true
+                        )
+                        // Volume card
+                        StatBox(
+                            value = "${summary.totalVolumeKg.toInt()}",
+                            label = "kg",
+                            subtext = "Volume",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    // Strength & Stamina Gained deltas
+                    if (summary.strengthScoreDelta > 0.001 && summary.staminaScoreDelta > 0.001) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            StatBox(
+                                value = "+${String.format("%.1f", summary.strengthScoreDelta)}",
+                                label = "STR Score",
+                                subtext = "Gained",
+                                modifier = Modifier.weight(1f),
+                                highlight = true
+                            )
+                            StatBox(
+                                value = "+${String.format("%.1f", summary.staminaScoreDelta)}",
+                                label = "STM Score",
+                                subtext = "Gained",
+                                modifier = Modifier.weight(1f),
+                                highlight = true
+                            )
+                        }
+                    } else if (summary.strengthScoreDelta > 0.001) {
+                        StatBox(
+                            value = "+${String.format("%.1f", summary.strengthScoreDelta)}",
+                            label = "STR Score",
+                            subtext = "Gained",
+                            modifier = Modifier.fillMaxWidth(),
+                            highlight = true
+                        )
+                    } else if (summary.staminaScoreDelta > 0.001) {
+                        StatBox(
+                            value = "+${String.format("%.1f", summary.staminaScoreDelta)}",
+                            label = "STM Score",
+                            subtext = "Gained",
+                            modifier = Modifier.fillMaxWidth(),
+                            highlight = true
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -573,13 +871,13 @@ fun StatBox(
             )
             Text(
                 text = label,
-                fontSize = 11.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (highlight) TextBlue else TextMuted
             )
             Text(
                 text = subtext,
-                fontSize = 9.sp,
+                fontSize = 11.sp,
                 color = TextMuted
             )
         }

@@ -13,5 +13,6 @@ data class ExerciseEntity(
     val calorieBurnRate: Double,
     val description: String,
     val howToSteps: String, // Newline separated steps
-    val impactLevel: String // "HIGH", "MEDIUM", "LOW"
+    val impactLevel: String, // "HIGH", "MEDIUM", "LOW"
+    val youtubeUrl: String = "" // YouTube tutorial link
 )

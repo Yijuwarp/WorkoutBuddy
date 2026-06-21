@@ -29,6 +29,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.workoutbuddy.data.database.WorkoutEntity
 import com.example.workoutbuddy.theme.*
 import com.example.workoutbuddy.ui.components.CalendarWidget
+import com.example.workoutbuddy.ui.components.ExerciseThumbnail
 import com.example.workoutbuddy.viewmodel.WorkoutViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -159,8 +160,8 @@ fun CompletedWorkoutItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = workout.category,
+                 Text(
+                    text = workout.category.replace("_", " "),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
                     color = categoryColor
                 )
@@ -191,6 +192,22 @@ fun CompletedWorkoutItem(
                     QuickStatItem(label = "${workout.totalSteps}", subtext = "Steps")
                     Spacer(modifier = Modifier.width(24.dp))
                 }
+                if (workout.strengthGain > 0.0) {
+                    QuickStatItem(
+                        label = "+${String.format("%.1f", workout.strengthGain)}",
+                        subtext = "Strength",
+                        labelColor = Color(0xFFEF4444)
+                    )
+                    Spacer(modifier = Modifier.width(24.dp))
+                }
+                if (workout.staminaGain > 0.0) {
+                    QuickStatItem(
+                        label = "+${String.format("%.1f", workout.staminaGain)}",
+                        subtext = "Stamina",
+                        labelColor = Color(0xFFF59E0B)
+                    )
+                    Spacer(modifier = Modifier.width(24.dp))
+                }
                 if (workout.prCount > 0) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -208,7 +225,7 @@ fun CompletedWorkoutItem(
                             )
                         }
                         Text(
-                            text = "PRs",
+                            text = "Records",
                             fontSize = 10.sp,
                             color = TextMuted
                         )
@@ -274,7 +291,7 @@ fun WorkoutDetailDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "${detail.workout.category} Workout",
+                            text = "${detail.workout.category.replace("_", " ")} Workout",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
                             color = TextDark
                         )
@@ -315,6 +332,22 @@ fun WorkoutDetailDialog(
                                 QuickStatItem(label = "${detail.workout.totalSteps}", subtext = "Steps")
                                 Spacer(modifier = Modifier.width(24.dp))
                             }
+                            if (detail.workout.strengthGain > 0.0) {
+                                QuickStatItem(
+                                    label = "+${String.format("%.1f", detail.workout.strengthGain)}",
+                                    subtext = "Strength",
+                                    labelColor = Color(0xFFEF4444)
+                                )
+                                Spacer(modifier = Modifier.width(24.dp))
+                            }
+                            if (detail.workout.staminaGain > 0.0) {
+                                QuickStatItem(
+                                    label = "+${String.format("%.1f", detail.workout.staminaGain)}",
+                                    subtext = "Stamina",
+                                    labelColor = Color(0xFFF59E0B)
+                                )
+                                Spacer(modifier = Modifier.width(24.dp))
+                            }
                             if (detail.workout.prCount > 0) {
                                 Column {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -332,7 +365,7 @@ fun WorkoutDetailDialog(
                                         )
                                     }
                                     Text(
-                                        text = "PRs",
+                                        text = "Records",
                                         fontSize = 10.sp,
                                         color = TextMuted
                                     )
@@ -416,62 +449,74 @@ fun WorkoutDetailDialog(
                             colors = CardDefaults.cardColors(containerColor = LightBackground),
                             border = BorderStroke(0.5.dp, BorderLight)
                         ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    text = exerciseDetail.exercise.name,
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = TextDark
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                ExerciseThumbnail(
+                                    exerciseName = exerciseDetail.exercise.name,
+                                    modifier = Modifier.size(40.dp)
                                 )
-                                Text(
-                                    text = "${exerciseDetail.exercise.bodyPart} • ${exerciseDetail.exercise.type}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextMuted,
-                                    modifier = Modifier.padding(bottom = 6.dp)
-                                )
-                                
-                                // Completed Sets
-                                exerciseDetail.sets.forEach { set ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 2.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "Set ${set.setNumber}",
-                                            fontSize = 12.sp,
-                                            color = TextMuted
-                                        )
-                                        
-                                        val statsText = when (exerciseDetail.exercise.type) {
-                                            "LIFT" -> "${formatDecimal(set.weight ?: 0.0)}kg x ${set.reps ?: 0}"
-                                            "CARDIO" -> "${formatTime(set.time ?: 0)} (${formatDecimal(set.distance ?: 0.0)}km)"
-                                            "HOLD" -> formatTime(set.time ?: 0)
-                                            else -> ""
-                                        }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = exerciseDetail.exercise.name,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = TextDark
+                                    )
+                                    Text(
+                                        text = "${exerciseDetail.exercise.bodyPart} • ${exerciseDetail.exercise.type}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextMuted,
+                                        modifier = Modifier.padding(bottom = 6.dp)
+                                    )
+                                    
+                                    // Completed Sets
+                                    exerciseDetail.sets.forEach { set ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 2.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Set ${set.setNumber}",
+                                                fontSize = 12.sp,
+                                                color = TextMuted
+                                            )
+                                            
+                                            val statsText = when (exerciseDetail.exercise.type) {
+                                                "LIFT" -> "${formatDecimal(set.weight ?: 0.0)}kg x ${set.reps ?: 0}"
+                                                "CARDIO" -> "${formatTime(set.time ?: 0)} (${formatDecimal(set.distance ?: 0.0)}km)"
+                                                "HOLD" -> formatTime(set.time ?: 0)
+                                                else -> ""
+                                            }
 
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            if (set.isPR) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Star,
-                                                    contentDescription = "PR",
-                                                    tint = GoldPR,
-                                                    modifier = Modifier.size(14.dp).padding(end = 2.dp)
-                                                )
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                if (set.isPR) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Star,
+                                                        contentDescription = "PR",
+                                                        tint = GoldPR,
+                                                        modifier = Modifier.size(14.dp).padding(end = 2.dp)
+                                                    )
+                                                    Text(
+                                                        text = "PR! ",
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = GoldPR
+                                                    )
+                                                }
                                                 Text(
-                                                    text = "PR! ",
+                                                    text = statsText,
                                                     fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = GoldPR
+                                                    color = TextDark
                                                 )
                                             }
-                                            Text(
-                                                text = statsText,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = TextDark
-                                            )
                                         }
                                     }
                                 }

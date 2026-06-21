@@ -1,5 +1,6 @@
 package com.example.workoutbuddy
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,6 +30,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+        }
+
         setContent {
             WorkoutBuddyTheme {
                 Surface(
@@ -39,5 +45,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        workoutViewModel.onAppForegrounded()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        workoutViewModel.onAppBackgrounded()
     }
 }

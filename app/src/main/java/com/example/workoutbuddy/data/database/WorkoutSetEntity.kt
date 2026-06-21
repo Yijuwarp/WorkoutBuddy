@@ -26,6 +26,7 @@ data class WorkoutSetEntity(
     val reps: Int? = null,
     val time: Int? = null,
     val distance: Double? = null,
+    val inclinePct: Double? = null,  // % incline for walking/running/cycling
     val isCompleted: Boolean = false,
     val isPR: Boolean = false,
     val recommendedWeight: Double? = null,

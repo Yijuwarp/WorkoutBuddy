@@ -12,5 +12,12 @@ data class WorkoutEntity(
     val totalCalories: Double = 0.0,
     val totalSteps: Int = 0,
     val prCount: Int = 0,
-    val durationInSeconds: Long = 0L
+    val durationInSeconds: Long = 0L,
+    val totalVolumeKg: Double = 0.0,
+    val startingStrengthScore: Double = 100.0,
+    val startingStaminaScore: Double = 100.0,
+    val intensityScore: Double = 0.0,
+    val isStarted: Boolean = false,
+    val strengthGain: Double = 0.0,
+    val staminaGain: Double = 0.0
 )
