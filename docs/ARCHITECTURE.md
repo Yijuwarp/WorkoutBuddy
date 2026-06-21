@@ -16,8 +16,12 @@ Built entirely with **Jetpack Compose** + **Material 3**.
 |---|---|
 | `WorkoutScreen.kt` | Displays the active workout: exercise cards, set rows, timers, and completion CTA |
 | `LogScreen.kt` | Calendar view for browsing workout history; shows workout detail on tap |
+| `OnboardingScreen.kt` | First-run profile setup (nickname, age, height, weight, gender, gym experience) |
+| `ProfileScreen.kt` | View/edit profile, lifetime stats (total workouts, volume, PRs) |
 | `UIComponents.kt` | Shared composables: rest timer overlay, countdown overlay, summary dialog, PR badge |
-| `Navigation.kt` | Bottom navigation bar with `Workout` and `Log` tabs |
+| `WavyFloatingNumbers.kt` | Animated floating-number celebration effect (e.g. on PR) |
+| `WorkoutIntensityDial.kt` | Visual gauge for session intensity |
+| `Navigation.kt` | Bottom navigation bar with `Workout`, `Log`, and `Profile` tabs |
 
 **State model:** The UI observes `StateFlow`s exposed by `WorkoutViewModel` via `collectAsStateWithLifecycle()`. No business logic lives in composables.
 
@@ -36,6 +40,8 @@ Single ViewModel for the entire app. Responsibilities:
   - `countdownJob`: per-set countdown for CARDIO/HOLD exercises
 - **Calorie & step estimation** – calculated at workout completion
 - **History/Log** – manages selected date, fetches workouts by date range, loads workout detail
+- **User profile management** – onboarding, profile edits, strength/stamina score updates after each session
+- **Adaptive weight recommendations** – scales baseline weight ratios (e.g. Squat 0.75× bodyweight, Deadlift 0.90×, Bench 0.55×) by `strengthScore`, rounded to the nearest 2.5kg plate
 
 **Key StateFlows:**
 
@@ -57,32 +63,37 @@ val selectedWorkoutDetail: StateFlow<WorkoutDetailState?>
 
 | File | Responsibility |
 |---|---|
-| `WorkoutRepository.kt` | Wraps all `WorkoutDao` calls; runs DB operations on `Dispatchers.IO` |
-| `DataRepository.kt` | Seeding logic — inserts the default exercise library on first launch |
+| `WorkoutRepository.kt` | Single repository wrapping all `WorkoutDao` calls; runs DB operations on `Dispatchers.IO` |
 
-The repository is the single source of truth. The ViewModel never touches the DAO directly.
+The repository is the single source of truth. The ViewModel never touches the DAO directly. `DatabaseInitializer.kt` (in `data/database/`) seeds the default 60+ exercise library on first launch instead of a separate repository class.
 
 ---
 
 ### 4. Database Layer (`data/database/`)
 
-**Room** database with a single `WorkoutDao` exposing all queries.
+**Room** database (schema version 10, destructive-fallback migration) with a single `WorkoutDao` exposing 40+ queries.
 
 #### Entity Relationships
 
 ```
 ExerciseEntity (1) ──< WorkoutSetEntity >── (1) WorkoutEntity
+
+UserProfileEntity (single row, id = 1) — independent of the above,
+read by the ViewModel to drive adaptive weight recommendations
+and updated after each completed workout.
 ```
 
 - An `ExerciseEntity` is a static definition (name, type, muscle group, etc.)
 - A `WorkoutEntity` is one gym session
-- A `WorkoutSetEntity` is a single set within a session, linked to both a workout and an exercise
+- A `WorkoutSetEntity` is a single set within a session, linked to both a workout and an exercise (cascade-deleted with its parent workout)
+- A `UserProfileEntity` is the single user's profile and running strength/stamina scores
 
 #### Key Design Decisions
 
 - **Draft pattern**: A workout starts as `isCompleted = false` (a draft). It is marked `isCompleted = true` only when the user taps "Complete Workout". This allows mid-session state to survive app restarts.
-- **Recommended vs actual values**: Each set stores both `recommendedWeight/Reps` (pre-calculated suggestions) and `weight/reps` (what the user actually did). This supports displaying "suggested" alongside logged values.
+- **Recommended vs actual values**: Each set stores both `recommendedWeight/Reps/Time/Distance` (pre-calculated suggestions) and the actual logged values. This supports displaying "suggested" alongside logged values.
 - **PR flag**: `isPR` on `WorkoutSetEntity` is recalculated dynamically every time a set is updated, by comparing against all historical sets for that exercise.
+- **Session snapshotting**: `WorkoutEntity` stores `startingStrengthScore`/`startingStaminaScore` (the user's scores at session start) alongside `strengthGain`/`staminaGain`, so historical sessions retain the score context they were generated under even as the live profile score changes.
 
 ---
 
@@ -148,6 +159,18 @@ Rest timer durations by impact level:
 - `HIGH` → 120 seconds (2 min)
 - `MEDIUM` → 60 seconds (1 min)
 - `LOW` → 30 seconds
+
+On timer expiry, `TimerExpiredReceiver` (a `BroadcastReceiver` registered by `WorkoutApplication`) fires a system notification through the channel created at app startup and plays `res/raw/chime.ogg`. `MainActivity` requests the `POST_NOTIFICATIONS` runtime permission on Android 13+ (API 33) so this still works in the background.
+
+---
+
+## Assets (`app/src/main/res/`)
+
+- **`drawable/ic_ex_*.jpg`** — 63 exercise photos, one per seeded exercise, referenced by `ExerciseEntity` rows
+- **`drawable/ic_launcher_foreground.xml` / `ic_launcher_background.xml`** — adaptive icon layers (API 26+)
+- **`mipmap-*dpi/ic_launcher*.png`** — legacy/round launcher icons across densities
+- **`raw/chime.ogg`** — sound played by `TimerExpiredReceiver` on timer expiry
+- **`xml/backup_rules.xml`, `xml/data_extraction_rules.xml`** — Android backup and data-extraction policy (the Room DB is local-only, so these mainly govern what survives auto-backup)
 
 ---
 

@@ -18,6 +18,9 @@ A smart, adaptive Android workout tracker built with **Jetpack Compose**, **Room
 | **Workout Log** | Calendar-based history view with detailed per-workout breakdowns |
 | **Muscle Impact Map** | Visual breakdown of which muscle groups were worked in each session |
 | **Calorie Estimation** | Per-set calorie calculations for lifts, cardio, and holds |
+| **User Profiling & Onboarding** | First-run setup (nickname, age, height, weight, gender, gym experience) drives adaptive weight recommendations |
+| **Strength/Stamina Scoring** | Tracks a running strength and stamina score per user, updated after every completed workout |
+| **Timer Notifications** | Posts a system notification + chime when the rest/countdown timer expires, even if the app isn't in the foreground |
 
 ---
 
@@ -28,24 +31,27 @@ WorkoutBuddy follows **MVVM (Model-View-ViewModel)** with a clean unidirectional
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                     UI Layer (Compose)                    │
-│  WorkoutScreen  │  LogScreen  │  UIComponents             │
+│  WorkoutScreen │ LogScreen │ OnboardingScreen │           │
+│  ProfileScreen │ UIComponents │ WorkoutIntensityDial      │
 └────────────────────────┬─────────────────────────────────┘
                          │ StateFlow / collectAsState
 ┌────────────────────────▼─────────────────────────────────┐
 │                  ViewModel Layer                          │
 │                WorkoutViewModel                           │
-│  (Timers, PR detection, workout generation, summaries)    │
+│  (Timers, PR detection, workout generation, summaries,    │
+│   profile management, adaptive weight recommendations)    │
 └────────────────────────┬─────────────────────────────────┘
                          │ suspend functions / Flow
 ┌────────────────────────▼─────────────────────────────────┐
 │                  Repository Layer                         │
-│        WorkoutRepository  │  DataRepository              │
+│                  WorkoutRepository                        │
 └────────────────────────┬─────────────────────────────────┘
                          │ Room DAO
 ┌────────────────────────▼─────────────────────────────────┐
-│                  Database Layer (Room)                    │
-│   WorkoutDatabase  │  WorkoutDao                         │
-│   ExerciseEntity   │  WorkoutEntity  │  WorkoutSetEntity  │
+│                  Database Layer (Room, v10)                │
+│   WorkoutDatabase  │  WorkoutDao                          │
+│   ExerciseEntity │ WorkoutEntity │ WorkoutSetEntity │      │
+│   UserProfileEntity                                        │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -56,37 +62,52 @@ WorkoutBuddy follows **MVVM (Model-View-ViewModel)** with a clean unidirectional
 ```
 app/src/main/java/com/example/workoutbuddy/
 │
-├── MainActivity.kt               # Entry point, sets up theme & ViewModel
-├── WorkoutApplication.kt         # Application class (DI setup)
-├── Navigation.kt                 # Bottom nav tabs: Workout / Log
+├── MainActivity.kt               # Entry point; sets up theme, ViewModel, requests
+│                                  # POST_NOTIFICATIONS permission on Android 13+
+├── WorkoutApplication.kt         # Application class (DI setup, notification channel)
+├── Navigation.kt                 # Bottom nav: Workout / Log / Profile tabs
 ├── NavigationKeys.kt             # Navigation route definitions
+├── TimerExpiredReceiver.kt       # BroadcastReceiver: posts notification + chime
+│                                  # when a rest/countdown timer expires
 │
 ├── data/
-│   ├── WorkoutRepository.kt      # Main repo: abstracts all DB operations
-│   ├── DataRepository.kt         # Exercise seeding & static data
+│   ├── WorkoutRepository.kt      # Main repo: abstracts all DB operations (Dispatchers.IO)
 │   └── database/
-│       ├── WorkoutDatabase.kt    # Room DB singleton (v1)
-│       ├── WorkoutDao.kt         # All SQL queries via Room annotations
+│       ├── WorkoutDatabase.kt    # Room DB singleton (v10, destructive fallback migration)
+│       ├── WorkoutDao.kt         # 40+ SQL queries via Room annotations
 │       ├── ExerciseEntity.kt     # Exercise table (name, type, body part, etc.)
 │       ├── WorkoutEntity.kt      # Workout session table
 │       ├── WorkoutSetEntity.kt   # Individual set table (weight, reps, time, etc.)
-│       └── DatabaseInitializer.kt# Pre-seeds exercises on first launch
+│       ├── UserProfileEntity.kt  # Single-row user profile (stats, scores)
+│       └── DatabaseInitializer.kt# Pre-seeds 60+ exercises on first launch
 │
 ├── viewmodel/
-│   └── WorkoutViewModel.kt       # Core business logic, timers, state management
+│   └── WorkoutViewModel.kt       # Core business logic: timers, state, PR detection,
+│                                  # profile management, adaptive weight recommendations
 │
 ├── ui/
 │   ├── screens/
 │   │   ├── WorkoutScreen.kt      # Active workout UI
-│   │   └── LogScreen.kt          # Workout history / calendar UI
+│   │   ├── LogScreen.kt          # Workout history / calendar UI
+│   │   ├── OnboardingScreen.kt   # First-run user profile setup
+│   │   └── ProfileScreen.kt      # Profile management & lifetime stats
 │   └── components/
-│       └── UIComponents.kt       # Shared composables (cards, dialogs, timers)
+│       ├── UIComponents.kt       # Shared composables (cards, dialogs, timers, PR badges)
+│       ├── WavyFloatingNumbers.kt# Animated celebratory number effect
+│       └── WorkoutIntensityDial.kt# Visual intensity gauge
 │
 └── theme/
     ├── Color.kt                  # Color palette
     ├── Theme.kt                  # MaterialTheme configuration
     └── Type.kt                   # Typography
 ```
+
+### Assets (`app/src/main/res/`)
+- `drawable/ic_ex_*.jpg` – 63 exercise photos, one per seeded exercise
+- `drawable/ic_launcher_foreground.xml`, `ic_launcher_background.xml` – adaptive icon layers
+- `mipmap-*dpi/ic_launcher*.png` – legacy launcher icons (incl. round variants)
+- `raw/chime.ogg` – sound played when a timer expires
+- `xml/backup_rules.xml`, `xml/data_extraction_rules.xml` – Android backup/data-extraction policy
 
 ---
 
@@ -102,6 +123,9 @@ app/src/main/java/com/example/workoutbuddy/
 | `bodyPart` | String | Primary muscle group |
 | `impactLevel` | String | `LOW`, `MEDIUM`, or `HIGH` (drives rest timer) |
 | `calorieBurnRate` | Double | kcal/min for cardio exercises |
+| `description` | String | Short exercise description |
+| `howToSteps` | String | Newline-separated instructional steps |
+| `youtubeUrl` | String | Tutorial video link |
 
 ### `workouts`
 | Column | Type | Description |
@@ -110,16 +134,23 @@ app/src/main/java/com/example/workoutbuddy/
 | `category` | String | `PUSH`, `PULL`, or `LOWER_BODY` |
 | `date` | Long | Epoch timestamp of completion |
 | `isCompleted` | Boolean | `false` = draft/active, `true` = finished |
+| `isStarted` | Boolean | Whether the session timer was started |
 | `durationInSeconds` | Long | Total session time |
 | `totalCalories` | Double | Estimated calories burned |
 | `totalSteps` | Int | Estimated step count |
+| `totalVolumeKg` | Double | Sum of all weight lifted in the session |
 | `prCount` | Int | Number of PRs set in this session |
+| `intensityScore` | Double | Calculated session intensity |
+| `startingStrengthScore` | Double | User's strength score at session start |
+| `startingStaminaScore` | Double | User's stamina score at session start |
+| `strengthGain` | Double | Strength score gain from this session |
+| `staminaGain` | Double | Stamina score gain from this session |
 
 ### `workout_sets`
 | Column | Type | Description |
 |---|---|---|
 | `id` | Long (PK) | Auto-generated |
-| `workoutId` | Long (FK) | Parent workout |
+| `workoutId` | Long (FK, CASCADE) | Parent workout |
 | `exerciseId` | Int (FK) | Exercise reference |
 | `setNumber` | Int | Set order (1, 2, 3…) |
 | `recommendedWeight` | Double? | AI-suggested weight |
@@ -128,10 +159,24 @@ app/src/main/java/com/example/workoutbuddy/
 | `recommendedDistance` | Double? | AI-suggested distance (km) |
 | `weight` | Double? | Actual weight logged |
 | `reps` | Int? | Actual reps logged |
-| `time` | Int? | Actual time logged |
-| `distance` | Double? | Actual distance logged |
+| `time` | Int? | Actual time logged (seconds) |
+| `distance` | Double? | Actual distance logged (km) |
+| `inclinePct` | Double? | Incline % for treadmill/bike exercises |
 | `isCompleted` | Boolean | Whether the set was completed |
-| `isPR` | Boolean | Whether this set was a PR |
+| `isPR` | Boolean | Recalculated dynamically against exercise history |
+
+### `user_profile`
+| Column | Type | Description |
+|---|---|---|
+| `id` | Int (PK) | Always `1` — single-row table |
+| `nickname` | String | Display name |
+| `age` | Int | User age |
+| `height` | Double | Height in cm |
+| `weight` | Double | Weight in kg |
+| `gender` | String | Male/Female/Other |
+| `gymExperience` | String | Beginner/Intermediate/Advanced |
+| `strengthScore` | Double | Running strength metric, drives weight recommendations |
+| `staminaScore` | Double | Running stamina metric (default 100.0) |
 
 ---
 
@@ -171,6 +216,31 @@ cd WorkoutBuddy
 | **Kotlin Coroutines** | Async operations & timers |
 | **Navigation3** | Compose navigation |
 | **KSP** | Kotlin Symbol Processing for Room code-gen |
+
+---
+
+## Permissions
+
+| Permission | Purpose |
+|---|---|
+| `POST_NOTIFICATIONS` | Required on Android 13+ to show timer-expiry notifications |
+| `VIBRATE` | Vibration feedback on timer expiry |
+| `SCHEDULE_EXACT_ALARM` | Precise timer/notification scheduling |
+| `INTERNET` | Reserved for future use (e.g. loading YouTube tutorial links) |
+
+---
+
+## Testing
+
+| File | Covers |
+|---|---|
+| `app/src/test/.../WorkoutCalculationsTest.kt` | Unit tests for calorie formulas (lift/hold/cardio), step estimation, and progressive overload logic |
+| `app/src/androidTest/.../ui/main/MainScreenTest.kt` | Compose UI test for the main screen |
+
+```bash
+./gradlew test               # unit tests
+./gradlew connectedAndroidTest  # instrumented UI tests
+```
 
 ---
 
