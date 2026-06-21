@@ -263,6 +263,13 @@ On each new session:
 
 ---
 
+## 📚 Documentation
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — layer responsibilities, data flow, timers, scoring & calorie models.
+- [docs/ADDING_EXERCISES.md](docs/ADDING_EXERCISES.md) — repeatable runbook for adding exercises (wger image pipeline via `tools/exercise_import/wger_import.py`, YouTube links, seed fields, and how each field drives scoring).
+
+---
+
 ## 🤝 Contributing
 
 1. Fork the repository

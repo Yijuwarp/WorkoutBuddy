@@ -451,7 +451,9 @@ fun ExerciseDetailBottomSheet(
     cooldownExerciseName: String?,
     cooldownRemaining: Int,
     cooldownDuration: Int,
+    isRestTimerExpanded: Boolean,
     onSkipCooldown: () -> Unit,
+    onShowRestTimer: () -> Unit,
     onDismissRequest: () -> Unit,
     onSetValuesChanged: (Long, Double?, Int?, Int?, Double?, Double?) -> Unit,
     onSetCompleteToggled: (Long, Boolean, Double?, Int?, Int?, Double?, Double?) -> Unit,
@@ -472,6 +474,7 @@ fun ExerciseDetailBottomSheet(
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle(color = BorderLight) }
     ) {
+      Box(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -808,6 +811,24 @@ fun ExerciseDetailBottomSheet(
                 }
             }
         }
+
+        // Float Cooldown Timer Banner (minimized state), mirrors the main workout screen
+        if (cooldownExerciseName != null && !isRestTimerExpanded) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 8.dp)
+                    .clickable { onShowRestTimer() }
+            ) {
+                CooldownBanner(
+                    exerciseName = cooldownExerciseName,
+                    remainingSeconds = cooldownRemaining,
+                    totalDuration = cooldownDuration,
+                    onSkip = onSkipCooldown
+                )
+            }
+        }
+      }
     }
 
     // How-To Sheet
@@ -1087,18 +1108,17 @@ fun SetRowItem(
                             value = repsInput,
                             onValueChange = {
                                 repsInput = it
+                                val r = it.text.toIntOrNull()
+                                if (r != null) {
+                                    val w = weightInput.text.toDoubleOrNull()
+                                    onValuesChanged(w, r, null, null, null)
+                                }
                             },
                             modifier = Modifier
                                 .width(80.dp)
                                 .height(50.dp)
                                 .onFocusChanged { focusState ->
-                                    val wasFocused = repsFocused
                                     repsFocused = focusState.isFocused
-                                    if (wasFocused && !focusState.isFocused) {
-                                        val r = repsInput.text.toIntOrNull()
-                                        val w = weightInput.text.toDoubleOrNull()
-                                        onValuesChanged(w, r, null, null, null)
-                                    }
                                 },
                             textStyle = TextStyle(fontSize = 16.sp, color = TextDark),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -1117,18 +1137,17 @@ fun SetRowItem(
                             value = weightInput,
                             onValueChange = {
                                 weightInput = it
+                                val w = it.text.toDoubleOrNull()
+                                if (w != null) {
+                                    val r = repsInput.text.toIntOrNull()
+                                    onValuesChanged(w, r, null, null, null)
+                                }
                             },
                             modifier = Modifier
                                 .width(88.dp)
                                 .height(50.dp)
                                 .onFocusChanged { focusState ->
-                                    val wasFocused = weightFocused
                                     weightFocused = focusState.isFocused
-                                    if (wasFocused && !focusState.isFocused) {
-                                        val w = weightInput.text.toDoubleOrNull()
-                                        val r = repsInput.text.toIntOrNull()
-                                        onValuesChanged(w, r, null, null, null)
-                                    }
                                 },
                             textStyle = TextStyle(fontSize = 16.sp, color = TextDark),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

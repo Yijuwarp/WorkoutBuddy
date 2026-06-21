@@ -644,43 +644,14 @@ fun OnboardingStep5(
     gymExperience: String,
     onComplete: () -> Unit
 ) {
-    // Live estimate strength score
+    // Live estimate strength & stamina scores — delegates to the same formulas used when
+    // the profile is actually saved (WorkoutViewModel.calculateInitial*Score), so this
+    // preview can never drift out of sync with the real saved values.
     val strengthScore = remember(age, height, weight, gender, gymExperience) {
-        val base = when (gender) {
-            "Male" -> weight * 1.2
-            "Female" -> weight * 0.9
-            else -> weight * 1.05
-        }
-        val ageMult = when {
-            age < 18 -> 0.8
-            age in 18..35 -> 1.0
-            else -> (1.0 - (age - 35) * 0.01).coerceAtLeast(0.6)
-        }
-        val heightMult = when {
-            height > 180.0 -> 1.05
-            height < 160.0 -> 0.95
-            else -> 1.0
-        }
-        val gymMult = when (gymExperience) {
-            "Intermediate" -> 1.8
-            "Expert" -> 2.8
-            else -> 1.0
-        }
-        (base * ageMult * heightMult * gymMult).coerceIn(30.0, 999.0)
+        WorkoutViewModel.calculateInitialStrengthScore(age, height, weight, gender, gymExperience)
     }
-
-    // Live estimate stamina score
-    val staminaScore = remember(age, height, weight, gender) {
-        val ageMultStamina = when {
-            age < 18 -> 0.9
-            age in 18..35 -> 1.0
-            else -> (1.0 - (age - 35) * 0.015).coerceAtLeast(0.6)
-        }
-        val weightMultStamina = when {
-            weight > 85.0 -> (1.0 - (weight - 85.0) * 0.005).coerceAtLeast(0.7)
-            else -> 1.0
-        }
-        (100.0 * ageMultStamina * weightMultStamina).coerceIn(30.0, 999.0)
+    val staminaScore = remember(age, height, weight, gender, gymExperience) {
+        WorkoutViewModel.calculateInitialStaminaScore(age, height, weight, gender, gymExperience)
     }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {

@@ -12,7 +12,7 @@ import androidx.room.RoomDatabase
         WorkoutSetEntity::class,
         UserProfileEntity::class
     ],
-    version = 10,
+    version = 12,
     exportSchema = false
 )
 abstract class WorkoutDatabase : RoomDatabase() {

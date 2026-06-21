@@ -51,6 +51,83 @@ object DatabaseInitializer {
                 youtubeUrl = "https://www.youtube.com/watch?v=8iPEnn-ltC8"
             ),
             ExerciseEntity(
+                name = "Decline Barbell Bench Press",
+                category = "PUSH",
+                type = "LIFT",
+                bodyPart = "Lower Chest",
+                calorieBurnRate = 0.34,
+                description = "Barbell press on a decline bench to emphasize the lower portion of the pectorals while still engaging triceps and front delts.",
+                howToSteps = "Lie back on a decline bench and hook your feet under the pads.\nGrip the barbell slightly wider than shoulder-width and unrack it.\nLower the bar under control to your lower chest.\nPress back up explosively until arms are fully extended.\nRe-rack the bar after your final rep.",
+                impactLevel = "HIGH",
+                youtubeUrl = "https://www.youtube.com/watch?v=LfyQBUKR8SE"
+            ),
+            ExerciseEntity(
+                name = "Decline Dumbbell Press",
+                category = "PUSH",
+                type = "LIFT",
+                bodyPart = "Lower Chest",
+                calorieBurnRate = 0.32,
+                description = "Decline-bench press with dumbbells for greater range of motion and unilateral control while targeting the lower chest.",
+                howToSteps = "Lie back on a decline bench with a dumbbell in each hand, securing your feet under the pads.\nPress both dumbbells up above your lower chest until arms are extended.\nLower them under control to the sides of your chest.\nKeep your shoulders back and core braced throughout.\nPress back up, avoiding flaring your elbows out.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=k9CzXmJcJNw"
+            ),
+            ExerciseEntity(
+                name = "Dumbbell Fly",
+                category = "PUSH",
+                type = "LIFT",
+                bodyPart = "Chest",
+                calorieBurnRate = 0.20,
+                description = "Lying dumbbell fly that isolates the chest through a wide arc and deep stretch, building pec width.",
+                howToSteps = "Lie flat on a bench holding a dumbbell in each hand above your chest.\nKeep a soft, fixed bend in your elbows throughout.\nLower the dumbbells out to the sides in a wide arc until you feel a chest stretch.\nSqueeze your chest to bring them back together over your chest.\nDon't let the dumbbells touch at the top to keep tension.",
+                impactLevel = "LOW",
+                youtubeUrl = "https://www.youtube.com/watch?v=L8MRBMGl7gc"
+            ),
+            ExerciseEntity(
+                name = "Close-Grip Bench Press",
+                category = "PUSH",
+                type = "LIFT",
+                bodyPart = "Triceps",
+                calorieBurnRate = 0.30,
+                description = "A bench press with a narrower grip and tucked elbows that shifts the emphasis onto the triceps for pressing strength.",
+                howToSteps = "Lie on a flat bench and grip the bar slightly narrower than shoulder-width.\nUnrack and hold the bar over your chest.\nLower the bar to your lower chest, keeping elbows tucked close to your body.\nPress back up by extending the elbows, squeezing the triceps.\nKeep wrists stacked over elbows throughout.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=UYJsFzqdgK4"
+            ),
+            ExerciseEntity(
+                name = "Dumbbell Pullover",
+                category = "PUSH",
+                type = "LIFT",
+                bodyPart = "Chest & Lats",
+                calorieBurnRate = 0.22,
+                description = "A single-dumbbell pullover that stretches and builds the chest and lats through a long overhead arc.",
+                howToSteps = "Lie on a bench holding one dumbbell with both hands above your chest.\nKeep a slight bend in the elbows.\nLower the dumbbell back behind your head until you feel a deep stretch.\nPull it back over your chest using your chest and lats.\nKeep your hips down and core braced throughout.",
+                impactLevel = "LOW",
+                youtubeUrl = "https://www.youtube.com/watch?v=Qc4L9I3pHnw"
+            ),
+            ExerciseEntity(
+                name = "Cable Lateral Raise",
+                category = "PUSH",
+                type = "LIFT",
+                bodyPart = "Shoulders",
+                calorieBurnRate = 0.15,
+                description = "Cable lateral raise that keeps constant tension on the side delts for wider, rounder shoulders.",
+                howToSteps = "Set a cable pulley to the lowest position and stand side-on.\nGrip the handle with the hand furthest from the machine.\nWith a slight elbow bend, raise your arm out to the side to shoulder height.\nPause briefly at the top, leading with the elbow.\nLower under control. Avoid swinging or using momentum.",
+                impactLevel = "LOW",
+                youtubeUrl = "https://www.youtube.com/watch?v=zpbm-xRHB6k"
+            ),
+            ExerciseEntity(
+                name = "Pike Push-ups",
+                category = "PUSH",
+                type = "LIFT",
+                bodyPart = "Shoulders",
+                calorieBurnRate = 0.20,
+                description = "A bodyweight pressing movement in a pike position that heavily targets the shoulders, a stepping stone toward handstand push-ups.",
+                howToSteps = "Start in a push-up position, then walk your feet in and raise your hips into an inverted V.\nKeep your arms straight and head between your arms to start.\nBend your elbows to lower the top of your head toward the floor.\nPress back up until arms are fully extended.\nKeep your hips high throughout to keep the load on the shoulders.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=fXgou2W10ok"
+            ),
+            ExerciseEntity(
                 name = "Cable Chest Fly",
                 category = "PUSH",
                 type = "LIFT",
@@ -81,7 +158,7 @@ object DatabaseInitializer {
                 description = "The fundamental standing overhead press with a barbell to build raw shoulder power and core stability.",
                 howToSteps = "Stand with barbell at shoulder height, grip shoulder-width.\nBrace core and press bar directly overhead.\nLock out arms at top.\nLower bar in a controlled arc back to shoulders.",
                 impactLevel = "HIGH",
-                youtubeUrl = "https://www.youtube.com/watch?v=2yjwXTZQDDI"
+                youtubeUrl = "https://www.youtube.com/watch?v=xe19t2_6yis"
             ),
             ExerciseEntity(
                 name = "Dumbbell Shoulder Press",
@@ -161,6 +238,17 @@ object DatabaseInitializer {
                 youtubeUrl = "https://www.youtube.com/watch?v=d_KZxkY_0cM"
             ),
             ExerciseEntity(
+                name = "Dumbbell Skull Crushers",
+                category = "PUSH",
+                type = "LIFT",
+                bodyPart = "Triceps",
+                calorieBurnRate = 0.17,
+                description = "Lying dumbbell triceps extension that allows a neutral grip and independent arm control for balanced tricep development.",
+                howToSteps = "Lie on a bench holding a dumbbell in each hand above your chest, palms facing each other.\nKeeping your upper arms still, bend your elbows to lower the dumbbells toward the sides of your head.\nPause briefly, then extend your elbows back to full extension.\nKeep shoulders, elbows, and wrists aligned throughout.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=dTjGqmR7ORg"
+            ),
+            ExerciseEntity(
                 name = "Push-ups",
                 category = "PUSH",
                 type = "LIFT",
@@ -169,7 +257,7 @@ object DatabaseInitializer {
                 description = "The foundational bodyweight pushing movement targeting chest, shoulders, and triceps.",
                 howToSteps = "Start in a plank position, hands shoulder-width apart.\nLower your chest to just above the floor by bending elbows.\nPush back up to starting position.\nKeep body in a straight line throughout.",
                 impactLevel = "MEDIUM",
-                youtubeUrl = "https://www.youtube.com/watch?v=IODxDxX7oi4"
+                youtubeUrl = "https://www.youtube.com/watch?v=_l3ySVKYVJ8"
             ),
             ExerciseEntity(
                 name = "Dips",
@@ -206,6 +294,17 @@ object DatabaseInitializer {
                 howToSteps = "Stand with mid-foot under the bar, feet hip-width.\nHinge at hips, grip bar just outside your legs.\nFlatten your back, take a deep breath and brace.\nDrive through the floor with legs as the bar passes the knees, lock hips forward.\nLower bar by hinging at hips, then bend knees once it passes them.",
                 impactLevel = "HIGH",
                 youtubeUrl = "https://www.youtube.com/watch?v=op9kVnSso6Q"
+            ),
+            ExerciseEntity(
+                name = "Dumbbell Deadlift",
+                category = "PULL",
+                type = "LIFT",
+                bodyPart = "Full Body",
+                calorieBurnRate = 0.42,
+                description = "A conventional-stance deadlift using dumbbells, ideal for beginners learning the hip hinge with a lighter, more forgiving load.",
+                howToSteps = "Stand with feet hip-width, a dumbbell in each hand in front of your thighs.\nHinge at the hips, pushing them back as you lower the dumbbells down the front of your legs.\nKeep your back flat and dumbbells close to your body.\nDrive through your heels and squeeze your glutes to stand back up.\nLock out at the top without leaning back.",
+                impactLevel = "HIGH",
+                youtubeUrl = "https://www.youtube.com/watch?v=Ipi8_vz8_z0"
             ),
             ExerciseEntity(
                 name = "Romanian Deadlift",
@@ -282,7 +381,7 @@ object DatabaseInitializer {
                 description = "The gold standard of bodyweight pulling exercises. Overhand grip pull-up for lat width and upper back development.",
                 howToSteps = "Hang from a bar with a wide overhand grip.\nPull your chest up toward the bar, leading with your elbows.\nChin clears the bar at the top.\nLower yourself with full control to a dead hang.",
                 impactLevel = "MEDIUM",
-                youtubeUrl = "https://www.youtube.com/watch?v=eGo4IYlbE5g"
+                youtubeUrl = "https://www.youtube.com/watch?v=aAggnpPyR6E"
             ),
             ExerciseEntity(
                 name = "Chin-ups",
@@ -294,6 +393,17 @@ object DatabaseInitializer {
                 howToSteps = "Hang from a bar with a shoulder-width underhand grip.\nPull yourself up until your chin is above the bar.\nSqueeze at the top.\nLower with control to a dead hang.",
                 impactLevel = "MEDIUM",
                 youtubeUrl = "https://www.youtube.com/watch?v=e1YSApl-QcM"
+            ),
+            ExerciseEntity(
+                name = "Inverted Row",
+                category = "PULL",
+                type = "LIFT",
+                bodyPart = "Back",
+                calorieBurnRate = 0.30,
+                description = "The horizontal-pull bodyweight equivalent of a barbell or dumbbell row, using a fixed bar at an angle to your body.",
+                howToSteps = "Set a bar at hip height in a rack, or use rings/a Smith machine.\nLie under the bar and grip it slightly wider than shoulder-width.\nKeep your body in a straight line from head to heels.\nPull your chest up to the bar, squeezing your shoulder blades together.\nLower with control to full arm extension. Walk feet further out to make it harder.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=Fl0UMfdEzsE"
             ),
             ExerciseEntity(
                 name = "Face Pulls",
@@ -416,6 +526,39 @@ object DatabaseInitializer {
                 impactLevel = "LOW",
                 youtubeUrl = "https://www.youtube.com/watch?v=cJRVVxmytaM"
             ),
+            ExerciseEntity(
+                name = "Dumbbell Upright Row",
+                category = "PULL",
+                type = "LIFT",
+                bodyPart = "Traps & Shoulders",
+                calorieBurnRate = 0.18,
+                description = "A vertical pulling movement with dumbbells that builds the traps and side delts.",
+                howToSteps = "Stand holding a dumbbell in each hand in front of your thighs, palms facing you.\nKeeping the dumbbells close to your body, pull them straight up toward chest height.\nLead with your elbows, keeping them higher than the wrists.\nStop when your upper arms reach parallel; don't shrug past that.\nLower the dumbbells under control.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=K0dYqPCaO14"
+            ),
+            ExerciseEntity(
+                name = "Barbell Upright Row",
+                category = "PULL",
+                type = "LIFT",
+                bodyPart = "Traps & Shoulders",
+                calorieBurnRate = 0.20,
+                description = "A vertical pulling movement with a barbell that builds the traps and side delts under a heavier, fixed load.",
+                howToSteps = "Stand holding a barbell with an overhand grip, hands slightly less than shoulder-width apart.\nLet the bar rest against your thighs with arms extended.\nPull the bar straight up toward your chin, leading with your elbows.\nKeep the bar close to your body and elbows higher than wrists.\nStop around shoulder height, then lower with control.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=Ljq6ZW4NSTo"
+            ),
+            ExerciseEntity(
+                name = "Concentration Curl",
+                category = "PULL",
+                type = "LIFT",
+                bodyPart = "Biceps",
+                calorieBurnRate = 0.15,
+                description = "A seated single-arm dumbbell curl braced against the thigh that strictly isolates the biceps for a strong peak contraction.",
+                howToSteps = "Sit on a bench holding a dumbbell, leaning slightly forward.\nRest the back of your working arm against the inside of your thigh.\nLet the dumbbell hang at arm's length, then curl it up toward your shoulder.\nSqueeze the biceps hard at the top.\nLower slowly to a full stretch. Keep the upper arm still throughout.",
+                impactLevel = "LOW",
+                youtubeUrl = "https://www.youtube.com/watch?v=0AUGkch3tzc"
+            ),
 
             // ==================== LOWER_BODY ====================
 
@@ -439,7 +582,7 @@ object DatabaseInitializer {
                 description = "Barbell squat with the bar held in a front rack position to emphasize the quadriceps and maintain a more upright torso.",
                 howToSteps = "Rest barbell on front delts with elbows forward.\nFeet shoulder-width, toes slightly out.\nBreath and brace, descend keeping torso upright.\nDrive up through the whole foot.",
                 impactLevel = "HIGH",
-                youtubeUrl = "https://www.youtube.com/watch?v=uYumuL_G_V0"
+                youtubeUrl = "https://www.youtube.com/watch?v=m4ytaCJZpl0"
             ),
             ExerciseEntity(
                 name = "Goblet Squat",
@@ -483,7 +626,7 @@ object DatabaseInitializer {
                 description = "Dynamic lunge variation building unilateral leg strength, balance, and glute activation.",
                 howToSteps = "Stand holding dumbbells at your sides.\nStep forward with one foot, lowering back knee toward the floor.\nPush off the front foot to bring rear foot forward.\nAlternate legs with each step.",
                 impactLevel = "MEDIUM",
-                youtubeUrl = "https://www.youtube.com/watch?v=Pbmj6xPo-Hw"
+                youtubeUrl = "https://www.youtube.com/watch?v=L8fvypPrzzs"
             ),
             ExerciseEntity(
                 name = "Bulgarian Split Squat",
@@ -495,6 +638,39 @@ object DatabaseInitializer {
                 howToSteps = "Stand facing away from a bench, rear foot elevated on it.\nHold dumbbells at sides.\nLower your back knee toward the floor.\nKeep torso upright and drive up through front heel.",
                 impactLevel = "HIGH",
                 youtubeUrl = "https://www.youtube.com/watch?v=2C-uNgKwPLE"
+            ),
+            ExerciseEntity(
+                name = "Barbell Lunge",
+                category = "LOWER_BODY",
+                type = "LIFT",
+                bodyPart = "Legs",
+                calorieBurnRate = 0.38,
+                description = "A loaded lunge with a barbell on the back, building unilateral quad and glute strength under heavier load.",
+                howToSteps = "Set a barbell across your upper back as you would for a squat.\nStep forward into a lunge, lowering your back knee toward the floor.\nKeep your torso upright and front knee tracking over the foot.\nDrive through the front heel to return to standing.\nAlternate legs each rep, bracing your core throughout.",
+                impactLevel = "HIGH",
+                youtubeUrl = "https://www.youtube.com/watch?v=WEKqlj3Vtg8"
+            ),
+            ExerciseEntity(
+                name = "Reverse Lunge",
+                category = "LOWER_BODY",
+                type = "LIFT",
+                bodyPart = "Quads & Glutes",
+                calorieBurnRate = 0.30,
+                description = "A lunge stepping backward instead of forward, easier on the knees while still building the quads and glutes.",
+                howToSteps = "Stand tall, optionally holding dumbbells at your sides.\nStep one foot back and lower until both knees are bent about 90 degrees.\nKeep most of your weight on the front foot.\nDrive through the front heel to return to standing.\nAlternate legs each rep.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=u_zSfK5ZFU4"
+            ),
+            ExerciseEntity(
+                name = "Good Mornings",
+                category = "LOWER_BODY",
+                type = "LIFT",
+                bodyPart = "Hamstrings",
+                calorieBurnRate = 0.32,
+                description = "A barbell hip-hinge with the bar on your back that strengthens the hamstrings, glutes, and lower back. Start light.",
+                howToSteps = "Set a barbell across your upper back as in a low-bar squat.\nStand with feet hip-width and a soft bend in the knees.\nHinge at the hips, pushing them back and lowering your torso toward parallel.\nKeep your back flat and feel a stretch in the hamstrings.\nDrive your hips forward to return to standing.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=YA-h3n9L4YU"
             ),
             ExerciseEntity(
                 name = "Dumbbell Romanian Deadlift",
@@ -582,7 +758,18 @@ object DatabaseInitializer {
                 description = "Wide-stance deadlift variation that places more emphasis on the inner thighs, glutes, and quads.",
                 howToSteps = "Stand with feet wide, toes pointing outward.\nGrip the bar inside your legs.\nKeep chest tall and back flat.\nDrive through heels and push knees outward as you stand.\nLower with control.",
                 impactLevel = "HIGH",
-                youtubeUrl = "https://www.youtube.com/watch?v=JbY72Him34Q"
+                youtubeUrl = "https://www.youtube.com/watch?v=wQHSYDSgDn8"
+            ),
+            ExerciseEntity(
+                name = "Dumbbell Sumo Deadlift",
+                category = "LOWER_BODY",
+                type = "LIFT",
+                bodyPart = "Legs & Back",
+                calorieBurnRate = 0.40,
+                description = "A wide-stance deadlift using a single dumbbell, emphasizing the inner thighs and glutes with a beginner-friendly setup.",
+                howToSteps = "Stand over a dumbbell with feet wider than shoulder-width, toes pointed out.\nSquat down and grip the dumbbell with both hands in the center of your body.\nKeep your back flat and chest tall.\nDrive through your heels, pushing your knees outward as you stand.\nLower with control back to the floor.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=xgb_WrJ_xtw"
             ),
             ExerciseEntity(
                 name = "Bodyweight Squats",
@@ -593,7 +780,7 @@ object DatabaseInitializer {
                 description = "Simple unloaded squat for warm-ups, high-rep conditioning, or beginners.",
                 howToSteps = "Stand feet shoulder-width, toes slightly out.\nLower hips until thighs parallel to floor.\nKeep chest up and knees over toes.\nStand back up.",
                 impactLevel = "LOW",
-                youtubeUrl = "https://www.youtube.com/watch?v=aclHkVaku9U"
+                youtubeUrl = "https://www.youtube.com/watch?v=C_VtOYc6j5c"
             ),
             ExerciseEntity(
                 name = "Step-ups",

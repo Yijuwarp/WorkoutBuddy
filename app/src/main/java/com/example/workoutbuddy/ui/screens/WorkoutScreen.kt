@@ -424,7 +424,9 @@ fun WorkoutScreen(
             )
         }
 
-        // Celebratory Record Broken Dialog
+        // Celebratory Record Broken Dialog — deferred until the user closes the exercise
+        // screen and returns to the main workout screen, rather than popping up over it.
+        if (selectedExerciseId == null) {
         recordBrokenCelebration?.let { celeb ->
             Dialog(onDismissRequest = { viewModel.dismissRecordCelebration() }) {
                 Card(
@@ -528,6 +530,7 @@ fun WorkoutScreen(
                 }
             }
         }
+        }
 
         // Add Exercise Dialog
         if (showAddExerciseDialog) {
@@ -576,7 +579,9 @@ fun WorkoutScreen(
                 cooldownExerciseName = cooldownExercise,
                 cooldownRemaining = cooldownRemaining,
                 cooldownDuration = cooldownTotal,
+                isRestTimerExpanded = showRestModal,
                 onSkipCooldown = { viewModel.skipCooldown() },
+                onShowRestTimer = { showRestModal = true },
                 onDismissRequest = {
                     viewModel.onExerciseScreenClosed(exerciseState.exercise.id)
                     selectedExerciseId = null

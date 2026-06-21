@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Cached wger catalog from tools/exercise_import (regenerated via `wger_import.py fetch`)
+/tools/exercise_import/wger_trans.json
+/tools/exercise_import/wger_imgs.json

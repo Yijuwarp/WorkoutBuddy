@@ -22,6 +22,23 @@ import java.util.Calendar
 
 private const val PERFORMANCE_MULTIPLIER = 1.5
 
+// Strength score gains are driven solely by genuine PRs on LIFT exercises, scaled by
+// how much the new PR beats the previous best by (in calculateSetPerformance units).
+private const val STRENGTH_PR_GAIN_FACTOR = 0.15
+private const val MAX_STRENGTH_GAIN_PER_PR = 15.0
+
+// Per-workout caps: regular (PR-driven) strength/stamina gains are capped at 3 per workout,
+// plus up to +1 bonus each if the workout hits "high intensity" performance/calories at
+// completion — so the absolute max either stat can move in a single workout is 4.
+private const val MAX_REGULAR_GAIN_PER_WORKOUT = 3.0
+private const val HIGH_INTENSITY_BONUS = 1.0
+private const val HIGH_INTENSITY_RATIO_THRESHOLD = 0.65
+
+// New-workout exercise selection: how many non-cardio exercises to pick, and how many
+// of them may share the same bodyPart before the rest of the pool is preferred instead.
+private const val MAIN_EXERCISES_PER_WORKOUT = 4
+private const val MAX_EXERCISES_PER_BODY_PART = 2
+
 class WorkoutViewModel(
     application: Application,
     private val repository: WorkoutRepository
@@ -55,6 +72,12 @@ class WorkoutViewModel(
     val floatingNumbers = MutableStateFlow<List<FloatingNumber>>(emptyList())
     private val newlyCompletedSetIds = mutableSetOf<Long>()
     val recordBrokenCelebration = MutableStateFlow<RecordBrokenState?>(null)
+
+    // Caches the pre-session "old record" text per (workoutId:exerciseId) the first time a PR
+    // is broken during this exercise's session, so that breaking the record again with an even
+    // better set later in the same session ratchets the celebration's "new record" up against
+    // the original baseline, instead of chaining off the intermediate PR and firing repeatedly.
+    private val celebrationBaselineForExercise = mutableMapOf<String, String>()
 
     // Exercise completion order (exerciseId -> order index, lower = completed earlier)
     private val exerciseCompletionOrder = MutableStateFlow<Map<Int, Int>>(emptyMap())
@@ -165,37 +188,28 @@ class WorkoutViewModel(
     }
 
     private suspend fun generateExercisesForWorkout(workoutId: Long, category: String) {
-        // Look up last 5 workouts to see if we did this category
-        val last5 = repository.getLast5CompletedWorkouts()
-        val lastWorkoutOfSameCategory = last5.firstOrNull { it.category == category }
-
-        val exerciseIdsToUse = mutableListOf<Int>()
-        if (lastWorkoutOfSameCategory != null) {
-            val pastSets = repository.getSetsForWorkout(lastWorkoutOfSameCategory.id)
-            exerciseIdsToUse.addAll(pastSets.map { it.exerciseId }.distinct())
-        }
-
-        // Fallback: If no history for this category, load defaults
-        if (exerciseIdsToUse.isEmpty()) {
-            val categoryExercises = repository.getExercisesByCategory(category)
-            val lifts = categoryExercises.filter { it.type == "LIFT" }.take(2)
-            val others = categoryExercises.filter { it.type != "LIFT" }.take(1)
-            exerciseIdsToUse.addAll(lifts.map { it.id })
-            exerciseIdsToUse.addAll(others.map { it.id })
-        }
+        // Randomly select non-cardio exercises for this category every time (rather than
+        // always reusing the exact same exercises as the last workout of this category),
+        // capping how many can share the same bodyPart so the session stays varied
+        // instead of e.g. 4 different chest presses in one PUSH day.
+        val categoryExercises = repository.getExercisesByCategory(category).filter { it.type != "CARDIO" }
+        val exerciseIdsToUse = selectDiverseRandomExercises(
+            pool = categoryExercises,
+            count = MAIN_EXERCISES_PER_WORKOUT,
+            maxPerBodyPart = MAX_EXERCISES_PER_BODY_PART
+        )
 
         // Add a random cardio exercise to each workout at the end
         val allExs = repository.getAllExercises().filter { it.isNotEmpty() }.first()
         val cardioExercises = allExs.filter { it.type == "CARDIO" }
         if (cardioExercises.isNotEmpty()) {
-            val randomCardio = cardioExercises.random()
-            exerciseIdsToUse.remove(randomCardio.id)
-            exerciseIdsToUse.add(randomCardio.id)
+            exerciseIdsToUse.add(cardioExercises.random().id)
         }
 
         // Fetch user profile for adaptive weight recommendations
         val profile = repository.getUserProfile()
         val strengthScore = profile?.strengthScore ?: 100.0
+        val staminaScore = profile?.staminaScore ?: 100.0
         val bodyWeight = profile?.weight ?: 75.0
 
         val setsToInsert = mutableListOf<WorkoutSetEntity>()
@@ -225,8 +239,8 @@ class WorkoutViewModel(
                         }
                     }
                     "CARDIO" -> {
-                        recTime = prevSets.firstOrNull()?.time ?: getStandardStartDuration(exercise.name)
-                        recDistance = if (exercise.name.contains("Jump Rope", ignoreCase = true)) null else (prevSets.firstOrNull()?.distance ?: getStandardStartDistance(exercise.name))
+                        recTime = prevSets.firstOrNull()?.time ?: getStandardStartDuration(exercise.name, staminaScore)
+                        recDistance = if (exercise.name.contains("Jump Rope", ignoreCase = true)) null else (prevSets.firstOrNull()?.distance ?: getStandardStartDistance(exercise.name, staminaScore))
                     }
                     "HOLD" -> {
                         recTime = prevSets.firstOrNull()?.time ?: 60
@@ -250,12 +264,42 @@ class WorkoutViewModel(
     }
 
     /**
+     * Randomly picks up to [count] exercises from [pool], preferring exercises whose
+     * bodyPart hasn't already hit [maxPerBodyPart] in this selection. If the cap makes it
+     * impossible to reach [count] (e.g. a tiny or low-diversity pool), the remainder is
+     * filled ignoring the cap rather than returning fewer exercises than requested.
+     */
+    private fun selectDiverseRandomExercises(pool: List<ExerciseEntity>, count: Int, maxPerBodyPart: Int): MutableList<Int> {
+        val shuffled = pool.shuffled()
+        val selected = mutableListOf<ExerciseEntity>()
+        val bodyPartCounts = mutableMapOf<String, Int>()
+
+        for (exercise in shuffled) {
+            if (selected.size >= count) break
+            val currentCount = bodyPartCounts.getOrDefault(exercise.bodyPart, 0)
+            if (currentCount < maxPerBodyPart) {
+                selected.add(exercise)
+                bodyPartCounts[exercise.bodyPart] = currentCount + 1
+            }
+        }
+
+        if (selected.size < count) {
+            for (exercise in shuffled) {
+                if (selected.size >= count) break
+                if (exercise !in selected) selected.add(exercise)
+            }
+        }
+
+        return selected.map { it.id }.toMutableList()
+    }
+
+    /**
      * Returns an adaptive starting weight based on the user's strength score and body weight.
      * Used only when no PR exists for the exercise. Scales proportionally so stronger
      * users get heavier defaults without the original hardcoded values.
      *
-     * Rationale fractions (of body weight) are calibrated to typical beginner-intermediate ratios:
-     *   Squat 0.75x, Deadlift 0.90x, Bench 0.55x, OHP 0.35x, Row 0.45x, Dumbbell 0.15x
+     * Rationale fractions (of body weight) are calibrated to be an easy starting point:
+     *   Squat 0.75x, Deadlift 0.40x, Bench 0.40x, OHP 0.15x, Row 0.30x, Dumbbell 0.15x
      * These are then blended with the strength score (S) as a secondary scaling factor
      * so that a user with a higher S gets nudged toward heavier weights.
      */
@@ -263,41 +307,79 @@ class WorkoutViewModel(
         // Strength score modifier: S=100 is baseline, scales linearly
         val sFactor = (strengthScore / 100.0).coerceIn(0.5, 3.0)
         val raw = when {
-            name.contains("Barbell Squat", ignoreCase = true)    -> bodyWeight * 0.75
-            name.contains("Deadlift", ignoreCase = true)          -> bodyWeight * 0.90
-            name.contains("Barbell Bench Press", ignoreCase = true) -> bodyWeight * 0.55
-            name.contains("Barbell Overhead Press", ignoreCase = true) -> bodyWeight * 0.35
-            name.contains("Barbell Row", ignoreCase = true)       -> bodyWeight * 0.45
-            name.contains("Dumbbell", ignoreCase = true)          -> bodyWeight * 0.15
-            name.contains("Push-ups", ignoreCase = true) ||
+            // Bodyweight/unloaded exercises must be checked first - matched before the
+            // "Squat" check below so "Bodyweight Squats" doesn't pick up a barbell ratio.
+            name.contains("Bodyweight", ignoreCase = true) ||
+                name.contains("Push-ups", ignoreCase = true) ||
                 name.contains("Dips", ignoreCase = true) ||
                 name.contains("Pull-ups", ignoreCase = true) ||
-                name.contains("Chin-ups", ignoreCase = true)      -> 0.0  // bodyweight exercises
-            else -> bodyWeight * 0.20
+                name.contains("Chin-ups", ignoreCase = true) ||
+                name.contains("Pike Push-ups", ignoreCase = true) ||
+                name.contains("Inverted Row", ignoreCase = true)  -> 0.0  // bodyweight exercises
+            // Matches "Barbell Back Squat" (the actual seeded name) without also matching
+            // Front/Goblet/Hack Squat, which intentionally use the generic ratio below.
+            name.contains("Barbell", ignoreCase = true) && name.contains("Squat", ignoreCase = true) -> bodyWeight * 0.75
+            name.contains("Deadlift", ignoreCase = true)          -> bodyWeight * 0.40
+            name.contains("Barbell Bench Press", ignoreCase = true) -> bodyWeight * 0.40
+            name.contains("Barbell Overhead Press", ignoreCase = true) -> bodyWeight * 0.15
+            name.contains("Barbell Row", ignoreCase = true)       -> bodyWeight * 0.30
+            name.contains("Dumbbell", ignoreCase = true)          -> bodyWeight * 0.15
+            else -> bodyWeight * 0.10
         }
         // Round to nearest 2.5kg plate increment
         val scaled = raw * sFactor
         return (Math.round(scaled / 2.5) * 2.5).coerceAtLeast(0.0)
     }
 
-    private fun getStandardStartDuration(name: String): Int {
-        return when {
-            name.contains("Running") -> 1200 // 20 min
-            name.contains("Walking") -> 1800 // 30 min
-            name.contains("Cycling") -> 1200 // 20 min
-            name.contains("Elliptical") -> 1200 // 20 min
-            else -> 600 // 10 min
+    /**
+     * Default starting duration, driven by stamina score so the user always has a
+     * sensible amount of time to complete their recommended distance.
+     * - Distance-tracked cardio (Running/Walking/Cycling/Elliptical/etc.): derived from
+     *   the recommended distance at an easy default pace, so the time actually matches
+     *   the distance instead of being picked independently.
+     * - Pure time-based cardio (Jump Rope): anchored directly off stamina, so a stamina
+     *   score of 50 maps to a 1-minute default.
+     */
+    private fun getStandardStartDuration(name: String, staminaScore: Double): Int {
+        if (name.contains("Jump Rope", ignoreCase = true)) {
+            val staminaFactor = staminaScore / 50.0
+            val seconds = staminaFactor * 60.0
+            return (Math.round(seconds / 15.0) * 15).toInt().coerceAtLeast(15)
         }
+        val distanceKm = getStandardStartDistance(name, staminaScore)
+        val paceKmh = when {
+            name.contains("Running", ignoreCase = true) -> 8.0
+            name.contains("Walking", ignoreCase = true) -> 5.0
+            name.contains("Cycling", ignoreCase = true) -> 15.0
+            name.contains("Elliptical", ignoreCase = true) -> 7.0
+            name.contains("Rowing", ignoreCase = true) -> 12.0
+            name.contains("Stair Climber", ignoreCase = true) -> 4.0
+            name.contains("Battle Ropes", ignoreCase = true) -> 3.0
+            else -> 5.0
+        }
+        val seconds = (distanceKm / paceKmh) * 3600.0
+        return (Math.round(seconds / 30.0) * 30).toInt().coerceAtLeast(60)
     }
 
-    private fun getStandardStartDistance(name: String): Double {
-        return when {
-            name.contains("Running") -> 2.5
-            name.contains("Walking") -> 2.0
-            name.contains("Cycling") -> 5.0
-            name.contains("Elliptical") -> 3.0
-            else -> 1.0
+    /**
+     * Default starting distance, driven entirely by stamina score. Anchored so a
+     * stamina score of 50 maps to a 1km running default; other cardio exercises are
+     * scaled relative to running. Always rounded to the nearest 0.5km.
+     */
+    private fun getStandardStartDistance(name: String, staminaScore: Double): Double {
+        val staminaFactor = staminaScore / 50.0
+        val relativeFactor = when {
+            name.contains("Running", ignoreCase = true) -> 1.0
+            name.contains("Walking", ignoreCase = true) -> 0.8
+            name.contains("Cycling", ignoreCase = true) -> 2.0
+            name.contains("Elliptical", ignoreCase = true) -> 1.2
+            name.contains("Rowing", ignoreCase = true) -> 2.5
+            name.contains("Stair Climber", ignoreCase = true) -> 0.6
+            name.contains("Battle Ropes", ignoreCase = true) -> 0.5
+            else -> 0.4
         }
+        val raw = staminaFactor * relativeFactor
+        return (Math.round(raw / 0.5) * 0.5).coerceAtLeast(0.5)
     }
 
     private suspend fun loadExerciseStatesForWorkout(workoutId: Long) {
@@ -480,9 +562,10 @@ class WorkoutViewModel(
                     )
                     repository.updateWorkoutSet(updatedSet)
 
-                    // Cascade values to all subsequent sets
+                    // Cascade values to subsequent sets that haven't been completed yet —
+                    // completed sets reflect what the user actually did and shouldn't be overwritten.
                     val setsToUpdate = state.sets.filter { s ->
-                        s.setNumber > match.setNumber
+                        s.setNumber > match.setNumber && !s.isCompleted
                     }
                     for (cascadeSet in setsToUpdate) {
                         repository.updateWorkoutSet(cascadeSet.copy(
@@ -598,7 +681,13 @@ class WorkoutViewModel(
                             }
                         }
                     }
-                    
+
+                    // Snapshot the pre-existing best set BEFORE reevaluation overwrites it,
+                    // so we can measure the PR margin (how much this set beat the old best by).
+                    val pastBestSetForScoring = if (state.exercise.type == "LIFT") {
+                        repository.getBestSetForExercise(match.exerciseId)
+                    } else null
+
                     reevaluatePRsForExercise(activeId, match.exerciseId)
                     loadExerciseStatesForWorkout(activeId)
 
@@ -655,18 +744,47 @@ class WorkoutViewModel(
                             val oldStr = profile.strengthScore
                             val oldStamina = profile.staminaScore
 
-                            val newStr = if (state.exercise.type == "LIFT") {
-                                if (perf > oldStr) oldStr + 0.02 * (perf - oldStr) + 1.0 else oldStr + 1.0
+                            // Cap regular (non-bonus) gains at 3 per workout — the bonus point
+                            // for hitting high intensity is applied separately at completion.
+                            val startingStrength = activeWorkout.value?.startingStrengthScore ?: oldStr
+                            val startingStamina = activeWorkout.value?.startingStaminaScore ?: oldStamina
+                            val maxStrengthThisWorkout = startingStrength + MAX_REGULAR_GAIN_PER_WORKOUT
+                            val maxStaminaThisWorkout = startingStamina + MAX_REGULAR_GAIN_PER_WORKOUT
+
+                            // Strength is a genuine reflection of lifting ability: it only moves
+                            // when a LIFT set sets a new PR for that exercise, scaled by how much
+                            // the new PR beats the previous best by. Non-PR lifts, cardio, and
+                            // holds never touch strength.
+                            val updatedSetIsPR = repository.getSetsForWorkout(activeId)
+                                .firstOrNull { it.id == setId }?.isPR == true
+
+                            val newStr = if (state.exercise.type == "LIFT" && updatedSetIsPR) {
+                                val pastBestPerf = pastBestSetForScoring?.let { past ->
+                                    calculateSetPerformance(
+                                        exerciseName = state.exercise.name,
+                                        weight = past.weight,
+                                        reps = past.reps,
+                                        time = past.time,
+                                        distance = past.distance,
+                                        exerciseType = state.exercise.type,
+                                        userBodyWeight = profile.weight,
+                                        inclinePct = past.inclinePct
+                                    )
+                                } ?: 0.0
+                                val prMargin = (perf - pastBestPerf).coerceAtLeast(0.0)
+                                val gain = (STRENGTH_PR_GAIN_FACTOR * prMargin).coerceAtMost(MAX_STRENGTH_GAIN_PER_PR)
+                                (oldStr + gain).coerceAtMost(maxStrengthThisWorkout)
                             } else {
-                                val cardioStrGain = if (state.exercise.name.contains("Stair Climber", ignoreCase = true)) 0.01 else 0.05
-                                oldStr + cardioStrGain
+                                oldStr
                             }
 
-                            val newStamina = if (state.exercise.type == "CARDIO") {
+                            // Stamina is earned through cardio and holds (both endurance-based);
+                            // lift sets only nudge it negligibly.
+                            val newStamina = (if (state.exercise.type == "CARDIO" || state.exercise.type == "HOLD") {
                                 if (perf > oldStamina) oldStamina + 0.02 * (perf - oldStamina) + 1.0 else oldStamina + 1.0
                             } else {
                                 if (perf > oldStamina) oldStamina + 0.001 * (perf - oldStamina) + 0.1 else oldStamina + 0.1
-                            }
+                            }).coerceAtMost(maxStaminaThisWorkout)
 
                             repository.saveUserProfile(
                                 profile.copy(
@@ -874,6 +992,7 @@ class WorkoutViewModel(
                         val activeId = activeWorkout.value?.id ?: return@launch
                         reevaluatePRsForExercise(activeId, match.exerciseId)
                         loadExerciseStatesForWorkout(activeId)
+                        recalculateActiveWorkoutIntensity()
                         triggerCooldown(state.exercise)
                         break
                     }
@@ -970,20 +1089,19 @@ class WorkoutViewModel(
                         "CARDIO" -> {
                             val durationMin = (set.time ?: 0) / 60.0
                             val distance = set.distance ?: 0.0
-                            val incMult = 1.0 + ((set.inclinePct ?: 0.0) * 0.10)
                             totalCalories += when {
-                                exercise.name.contains("Running") -> 75.0 * distance * (1.0 + (set.inclinePct ?: 0.0) * 0.10)
-                                exercise.name.contains("Walking")  -> 40.0 * distance * (1.0 + (set.inclinePct ?: 0.0) * 0.12)
-                                exercise.name.contains("Cycling")  -> 30.0 * distance * (1.0 + (set.inclinePct ?: 0.0) * 0.08)
-                                exercise.name.contains("Elliptical") -> 7.0 * durationMin
+                                exercise.name.contains("Running", ignoreCase = true) -> 75.0 * distance * (1.0 + (set.inclinePct ?: 0.0) * 0.10)
+                                exercise.name.contains("Walking", ignoreCase = true)  -> 40.0 * distance * (1.0 + (set.inclinePct ?: 0.0) * 0.12)
+                                exercise.name.contains("Cycling", ignoreCase = true)  -> 30.0 * distance * (1.0 + (set.inclinePct ?: 0.0) * 0.08)
+                                exercise.name.contains("Elliptical", ignoreCase = true) -> 7.0 * durationMin
                                 else -> exercise.calorieBurnRate * durationMin
                             }
 
                             // Steps calculations
                             totalSteps += when {
-                                exercise.name.contains("Running") -> (distance * 1250).toInt()
-                                exercise.name.contains("Walking") -> (distance * 1300).toInt()
-                                exercise.name.contains("Elliptical") -> ((set.time ?: 0) * 2.0).toInt()
+                                exercise.name.contains("Running", ignoreCase = true) -> (distance * 1250).toInt()
+                                exercise.name.contains("Walking", ignoreCase = true) -> (distance * 1300).toInt()
+                                exercise.name.contains("Elliptical", ignoreCase = true) -> ((set.time ?: 0) * 2.0).toInt()
                                 else -> 0
                             }
                         }
@@ -1004,8 +1122,28 @@ class WorkoutViewModel(
                 repository.deleteWorkoutSet(it.id)
             }
 
-            // Capture strength and stamina delta before/after
-            val profileBeforeCompletion = repository.getUserProfile()
+            // High-intensity bonus: +1 to the relevant stat if this workout hit "high" on the
+            // performance dial (-> strength) or the calorie-burn dial (-> stamina), using the
+            // same ratio-to-target and HIGH threshold as the dials shown on this screen.
+            val totalSetsCount = allSets.size.coerceAtLeast(1)
+            val targetPerformanceScore = workout.startingStrengthScore * totalSetsCount
+            val targetCalories = totalSetsCount * 20.0 + 100.0
+            val performanceRatio = if (targetPerformanceScore > 0.0) workout.intensityScore / targetPerformanceScore else 0.0
+            val caloriesRatio = if (targetCalories > 0.0) totalCalories / targetCalories else 0.0
+            val hitHighPerformance = performanceRatio >= HIGH_INTENSITY_RATIO_THRESHOLD
+            val hitHighCalories = caloriesRatio >= HIGH_INTENSITY_RATIO_THRESHOLD
+
+            var profileBeforeCompletion = repository.getUserProfile()
+            if (profileBeforeCompletion != null && (hitHighPerformance || hitHighCalories)) {
+                val bonusedProfile = profileBeforeCompletion.copy(
+                    strengthScore = if (hitHighPerformance) (profileBeforeCompletion.strengthScore + HIGH_INTENSITY_BONUS).coerceIn(30.0, 999.0) else profileBeforeCompletion.strengthScore,
+                    staminaScore = if (hitHighCalories) (profileBeforeCompletion.staminaScore + HIGH_INTENSITY_BONUS).coerceIn(30.0, 999.0) else profileBeforeCompletion.staminaScore
+                )
+                repository.saveUserProfile(bonusedProfile)
+                profileBeforeCompletion = bonusedProfile
+            }
+
+            // Capture strength and stamina delta before/after (now includes the bonus, if any)
             val currentStrength = profileBeforeCompletion?.strengthScore ?: 0.0
             val currentStamina = profileBeforeCompletion?.staminaScore ?: 0.0
             val strengthDelta = (currentStrength - workout.startingStrengthScore).coerceAtLeast(0.0)
@@ -1128,7 +1266,7 @@ class WorkoutViewModel(
                         muscleImpacts["Triceps"] = (muscleImpacts["Triceps"] ?: 0.0) + (completedCount * 0.5)
                         muscleImpacts["Shoulders"] = (muscleImpacts["Shoulders"] ?: 0.0) + (completedCount * 0.3)
                     }
-                    "Barbell Overhead Press", "Dumbbell Overhead Press" -> {
+                    "Barbell Overhead Press", "Dumbbell Shoulder Press" -> {
                         muscleImpacts["Triceps"] = (muscleImpacts["Triceps"] ?: 0.0) + (completedCount * 0.4)
                         muscleImpacts["Core"] = (muscleImpacts["Core"] ?: 0.0) + (completedCount * 0.2)
                     }
@@ -1142,11 +1280,15 @@ class WorkoutViewModel(
                     "Pull-ups", "Chin-ups" -> {
                         muscleImpacts["Arms"] = (muscleImpacts["Arms"] ?: 0.0) + (completedCount * 0.6) // biceps
                     }
-                    "Barbell Squat", "Dumbbell Squat" -> {
-                        muscleImpacts["Core"] = (muscleImpacts["Core"] ?: 0.0) + (completedCount * 0.3)
-                    }
-                    "Running", "Walking", "Cycling" -> {
-                        muscleImpacts["Cardio"] = (muscleImpacts["Cardio"] ?: 0.0) + (completedCount * 1.0)
+                    else -> {
+                        // Catches all squat variants (the seeded name is "Barbell Back Squat",
+                        // not "Barbell Squat" - exact-match would silently never fire).
+                        if (exercise.name.contains("Squat", ignoreCase = true)) {
+                            muscleImpacts["Core"] = (muscleImpacts["Core"] ?: 0.0) + (completedCount * 0.3)
+                        }
+                        if (exercise.name == "Running" || exercise.name == "Walking" || exercise.name == "Cycling") {
+                            muscleImpacts["Cardio"] = (muscleImpacts["Cardio"] ?: 0.0) + (completedCount * 1.0)
+                        }
                     }
                 }
             }
@@ -1201,23 +1343,23 @@ class WorkoutViewModel(
             // Try to copy recommendation from the last set, or use defaults
             val lastSet = sets.lastOrNull()
             val exercise = repository.getExerciseById(exerciseId) ?: return@launch
-            
+            val profile = repository.getUserProfile()
+
             val newSet = WorkoutSetEntity(
                 workoutId = activeId,
                 exerciseId = exerciseId,
                 setNumber = nextSetNum,
                 recommendedWeight = lastSet?.recommendedWeight ?: run {
                     val bestSet = repository.getBestSetForExercise(exerciseId)
-                    val p = repository.getUserProfile()
                     bestSet?.weight
-                        ?: getAdaptiveStartWeight(exercise.name, p?.strengthScore ?: 100.0, p?.weight ?: 75.0)
+                        ?: getAdaptiveStartWeight(exercise.name, profile?.strengthScore ?: 100.0, profile?.weight ?: 75.0)
                 },
                 recommendedReps = lastSet?.recommendedReps ?: run {
                     val bestSet = repository.getBestSetForExercise(exerciseId)
                     bestSet?.reps ?: 10
                 },
-                recommendedTime = lastSet?.recommendedTime ?: (if (exercise.type == "CARDIO") getStandardStartDuration(exercise.name) else if (exercise.type == "HOLD") 60 else null),
-                recommendedDistance = lastSet?.recommendedDistance ?: (if (exercise.type == "CARDIO" && !exercise.name.contains("Jump Rope", ignoreCase = true)) getStandardStartDistance(exercise.name) else null)
+                recommendedTime = lastSet?.recommendedTime ?: (if (exercise.type == "CARDIO") getStandardStartDuration(exercise.name, profile?.staminaScore ?: 100.0) else if (exercise.type == "HOLD") 60 else null),
+                recommendedDistance = lastSet?.recommendedDistance ?: (if (exercise.type == "CARDIO" && !exercise.name.contains("Jump Rope", ignoreCase = true)) getStandardStartDistance(exercise.name, profile?.staminaScore ?: 100.0) else null)
             )
 
             repository.insertWorkoutSet(newSet)
@@ -1314,8 +1456,9 @@ class WorkoutViewModel(
                     recReps = 12
                 }
             } else if (exercise.type == "CARDIO") {
-                recTime = prevSets.firstOrNull()?.time ?: getStandardStartDuration(exercise.name)
-                recDistance = if (exercise.name.contains("Jump Rope", ignoreCase = true)) null else (prevSets.firstOrNull()?.distance ?: getStandardStartDistance(exercise.name))
+                val p = repository.getUserProfile()
+                recTime = prevSets.firstOrNull()?.time ?: getStandardStartDuration(exercise.name, p?.staminaScore ?: 100.0)
+                recDistance = if (exercise.name.contains("Jump Rope", ignoreCase = true)) null else (prevSets.firstOrNull()?.distance ?: getStandardStartDistance(exercise.name, p?.staminaScore ?: 100.0))
             } else if (exercise.type == "HOLD") {
                 recTime = prevSets.firstOrNull()?.time ?: 60
             }
@@ -1389,8 +1532,9 @@ class WorkoutViewModel(
                         }
                     }
                     "CARDIO" -> {
-                        recTime = prevSets.firstOrNull()?.time ?: getStandardStartDuration(newExercise.name)
-                        recDistance = prevSets.firstOrNull()?.distance ?: getStandardStartDistance(newExercise.name)
+                        val p = repository.getUserProfile()
+                        recTime = prevSets.firstOrNull()?.time ?: getStandardStartDuration(newExercise.name, p?.staminaScore ?: 100.0)
+                        recDistance = if (newExercise.name.contains("Jump Rope", ignoreCase = true)) null else (prevSets.firstOrNull()?.distance ?: getStandardStartDistance(newExercise.name, p?.staminaScore ?: 100.0))
                     }
                     "HOLD" -> {
                         recTime = prevSets.firstOrNull()?.time ?: 60
@@ -1444,6 +1588,15 @@ class WorkoutViewModel(
         }
     }
 
+    // Returns the fixed "old record" to display in the celebration popup for this exercise's
+    // session: the first time this is called for a given workout+exercise, it locks in
+    // freshOldRecord as the baseline; subsequent calls (from later PRs in the same session)
+    // keep returning that same baseline instead of the just-superseded intermediate PR.
+    private fun celebrationOldRecord(workoutId: Long, exerciseId: Int, freshOldRecord: String): String {
+        val key = "$workoutId:$exerciseId"
+        return celebrationBaselineForExercise.getOrPut(key) { freshOldRecord }
+    }
+
     private suspend fun reevaluatePRsForExercise(workoutId: Long, exerciseId: Int) {
         val exercise = repository.getExerciseById(exerciseId) ?: return
         val sets = repository.getSetsForWorkout(workoutId).filter { it.exerciseId == exerciseId }
@@ -1470,7 +1623,8 @@ class WorkoutViewModel(
                     ((currentBestSet.weight ?: 0.0) == (pastBestSet.weight ?: 0.0) && (currentBestSet.reps ?: 0) > (pastBestSet.reps ?: 0))
                 )
                 if (isBrokenRecord && currentBestSet != null && pastBestSet != null) {
-                    val oldRec = "${formatDecimal(pastBestSet.weight ?: 0.0)} kg x ${pastBestSet.reps ?: 0}"
+                    val freshOldRec = "${formatDecimal(pastBestSet.weight ?: 0.0)} kg x ${pastBestSet.reps ?: 0}"
+                    val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                     val newRec = "${formatDecimal(currentBestSet.weight ?: 0.0)} kg x ${currentBestSet.reps ?: 0}"
                     recordBrokenCelebration.value = RecordBrokenState(exercise.name, oldRec, newRec)
                 }
@@ -1493,7 +1647,8 @@ class WorkoutViewModel(
                     val firstPRSet = if (hasNewPR) completedSets.firstOrNull { it.time == maxTime } else null
                     
                     if (isBrokenRecord && firstPRSet != null && !firstPRSet.isPR) {
-                        val oldRec = formatTime(pastBestTime)
+                        val freshOldRec = formatTime(pastBestTime)
+                        val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                         val newRec = formatTime(maxTime)
                         recordBrokenCelebration.value = RecordBrokenState(exercise.name, oldRec, newRec)
                     }
@@ -1505,9 +1660,14 @@ class WorkoutViewModel(
                         }
                     }
                 } else {
+                    // Tie-break order (distance DESC, incline DESC, time ASC i.e. faster wins)
+                    // matches getBestDistanceSetForExercise's SQL ORDER BY exactly, so the
+                    // "best" set picked here and the historical "best" fetched from the DB
+                    // agree on what counts as better when distance+incline tie.
                     val currentBestSet = completedSets.maxWithOrNull(
                         compareBy<WorkoutSetEntity> { it.distance ?: 0.0 }
                             .thenBy { it.inclinePct ?: 0.0 }
+                            .thenBy { -(it.time ?: Int.MAX_VALUE) }
                     )
                     val pastBestSet = repository.getBestDistanceSetForExercise(exerciseId)
                     val hasNewPR = if (currentBestSet == null) {
@@ -1519,17 +1679,19 @@ class WorkoutViewModel(
                         val pastDist = pastBestSet.distance ?: 0.0
                         val currentIncl = currentBestSet.inclinePct ?: 0.0
                         val pastIncl = pastBestSet.inclinePct ?: 0.0
-                        currentDist > pastDist || (currentDist == pastDist && currentIncl > pastIncl)
+                        val currentTime = currentBestSet.time ?: Int.MAX_VALUE
+                        val pastTime = pastBestSet.time ?: Int.MAX_VALUE
+                        currentDist > pastDist ||
+                            (currentDist == pastDist && currentIncl > pastIncl) ||
+                            (currentDist == pastDist && currentIncl == pastIncl && currentTime < pastTime)
                     }
-                    
-                    val isBrokenRecord = currentBestSet != null && pastBestSet != null && !currentBestSet.isPR && (
-                        (currentBestSet.distance ?: 0.0) > (pastBestSet.distance ?: 0.0) ||
-                        ((currentBestSet.distance ?: 0.0) == (pastBestSet.distance ?: 0.0) && (currentBestSet.inclinePct ?: 0.0) > (pastBestSet.inclinePct ?: 0.0))
-                    )
+
+                    val isBrokenRecord = currentBestSet != null && pastBestSet != null && !currentBestSet.isPR && hasNewPR
                     if (isBrokenRecord && currentBestSet != null && pastBestSet != null) {
                         val oldIncl = if ((pastBestSet.inclinePct ?: 0.0) > 0.0) " at ${formatDecimal(pastBestSet.inclinePct ?: 0.0)}%" else ""
                         val newIncl = if ((currentBestSet.inclinePct ?: 0.0) > 0.0) " at ${formatDecimal(currentBestSet.inclinePct ?: 0.0)}%" else ""
-                        val oldRec = "${formatDecimal(pastBestSet.distance ?: 0.0)} km$oldIncl"
+                        val freshOldRec = "${formatDecimal(pastBestSet.distance ?: 0.0)} km$oldIncl"
+                        val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                         val newRec = "${formatDecimal(currentBestSet.distance ?: 0.0)} km$newIncl"
                         recordBrokenCelebration.value = RecordBrokenState(exercise.name, oldRec, newRec)
                     }
@@ -1552,7 +1714,8 @@ class WorkoutViewModel(
                 val firstPRSet = if (hasNewPR) completedSets.firstOrNull { it.time == maxTime } else null
                 
                 if (isBrokenRecord && firstPRSet != null && !firstPRSet.isPR) {
-                    val oldRec = formatTime(pastBestTime)
+                    val freshOldRec = formatTime(pastBestTime)
+                    val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                     val newRec = formatTime(maxTime)
                     recordBrokenCelebration.value = RecordBrokenState(exercise.name, oldRec, newRec)
                 }
@@ -1590,29 +1753,85 @@ class WorkoutViewModel(
 
     // --- User Profile & Strength Logic ---
 
+    companion object {
+        // Strength declines more gradually with age than stamina does.
+        private fun ageMultStrengthFor(age: Int): Double = when {
+            age < 18 -> 0.8
+            age in 18..35 -> 1.0
+            else -> (1.0 - (age - 35) * 0.01).coerceAtLeast(0.6)
+        }
+
+        // Stamina (cardiovascular capacity) declines faster with age than raw strength.
+        private fun ageMultStaminaFor(age: Int): Double = when {
+            age < 18 -> 0.85
+            age in 18..35 -> 1.0
+            else -> (1.0 - (age - 35) * 0.015).coerceAtLeast(0.5)
+        }
+
+        private fun heightMultFor(height: Double): Double = when {
+            height > 180.0 -> 1.05
+            height < 160.0 -> 0.95
+            else -> 1.0
+        }
+
+        // Secondary modifier for strength: heavier bodies tend to carry more raw
+        // strength capacity, lighter bodies slightly less.
+        private fun weightMultStrengthFor(weight: Double): Double = when {
+            weight > 90.0 -> 1.05
+            weight < 60.0 -> 0.95
+            else -> 1.0
+        }
+
+        private fun gymMultFor(gymExperience: String): Double = when (gymExperience) {
+            "Beginner" -> 0.7
+            "Intermediate" -> 1.0
+            "Expert" -> 1.3
+            else -> 0.7
+        }
+
+        /**
+         * Single source of truth for the onboarding strength estimate. Used both when
+         * actually saving the profile and for the onboarding screen's live preview, so
+         * the two can never drift apart.
+         *
+         * Strength is anchored on height rather than weight (taller frames imply more
+         * leverage/limb length, which the app treats as the primary strength driver),
+         * with weight as a secondary modifier and its own age curve.
+         */
+        fun calculateInitialStrengthScore(age: Int, height: Double, weight: Double, gender: String, gymExperience: String): Double {
+            val genderMult = when (gender) {
+                "Male" -> 1.2
+                "Female" -> 0.9
+                else -> 1.05
+            }
+            // Scale constant calibrated so a ~175cm frame lands in the same ballpark
+            // the old weight-based formula produced for an average bodyweight.
+            val base = height * 0.45 * genderMult
+            return (base * ageMultStrengthFor(age) * weightMultStrengthFor(weight) * gymMultFor(gymExperience)).coerceIn(30.0, 999.0)
+        }
+
+        /**
+         * Single source of truth for the onboarding stamina estimate. Mirrors strength's
+         * height/gym multipliers, but weight and gender are inverted: lighter bodies
+         * and (on average) female physiology carry endurance advantages, whereas strength
+         * rewards taller frames and male physiology. Stamina also uses its own (steeper)
+         * age decline curve, since cardiovascular capacity fades faster than raw strength.
+         */
+        fun calculateInitialStaminaScore(age: Int, height: Double, weight: Double, gender: String, gymExperience: String): Double {
+            val weightFactorStamina = (70.0 / weight).coerceIn(0.7, 1.3)
+            val genderStam = when (gender) {
+                "Male" -> 0.95
+                "Female" -> 1.05
+                else -> 1.0
+            }
+            return (100.0 * weightFactorStamina * genderStam * ageMultStaminaFor(age) * heightMultFor(height) * gymMultFor(gymExperience)).coerceIn(30.0, 999.0)
+        }
+    }
+
     fun saveUserProfile(nickname: String, age: Int, height: Double, weight: Double, gender: String, gymExperience: String) {
         viewModelScope.launch {
-            val base = when (gender) {
-                "Male" -> weight * 1.2
-                "Female" -> weight * 0.9
-                else -> weight * 1.05
-            }
-            val ageMult = when {
-                age < 18 -> 0.8
-                age in 18..35 -> 1.0
-                else -> (1.0 - (age - 35) * 0.01).coerceAtLeast(0.6)
-            }
-            val heightMult = when {
-                height > 180.0 -> 1.05
-                height < 160.0 -> 0.95
-                else -> 1.0
-            }
-            val gymMult = when (gymExperience) {
-                "Intermediate" -> 1.25
-                "Expert" -> 1.5
-                else -> 1.0
-            }
-            val initialStrength = (base * ageMult * heightMult * gymMult).coerceIn(30.0, 999.0)
+            val initialStrength = calculateInitialStrengthScore(age, height, weight, gender, gymExperience)
+            val initialStamina = calculateInitialStaminaScore(age, height, weight, gender, gymExperience)
 
             val profile = UserProfileEntity(
                 nickname = nickname,
@@ -1621,6 +1840,7 @@ class WorkoutViewModel(
                 weight = weight,
                 gender = gender,
                 strengthScore = initialStrength,
+                staminaScore = initialStamina,
                 gymExperience = gymExperience
             )
             repository.saveUserProfile(profile)
@@ -1646,47 +1866,16 @@ class WorkoutViewModel(
         viewModelScope.launch {
             val currentProfile = repository.getUserProfile() ?: return@launch
 
-            // Calculate old baseline estimation
-            val oldBase = when (currentProfile.gender) {
-                "Male" -> currentProfile.weight * 1.2
-                "Female" -> currentProfile.weight * 0.9
-                else -> currentProfile.weight * 1.05
-            }
-            val oldAgeMult = when {
-                currentProfile.age < 18 -> 0.8
-                currentProfile.age in 18..35 -> 1.0
-                else -> (1.0 - (currentProfile.age - 35) * 0.01).coerceAtLeast(0.6)
-            }
-            val oldHeightMult = when {
-                currentProfile.height > 180.0 -> 1.05
-                currentProfile.height < 160.0 -> 0.95
-                else -> 1.0
-            }
-            val oldBaseScore = oldBase * oldAgeMult * oldHeightMult
+            // Delegate to the same formulas used at onboarding (and its preview) so this
+            // never drifts out of sync with them. Gym experience doesn't change here, so
+            // it's held fixed on both sides of the delta — only the edited fields move it.
+            val oldBaselineStrength = calculateInitialStrengthScore(currentProfile.age, currentProfile.height, currentProfile.weight, currentProfile.gender, currentProfile.gymExperience)
+            val newBaselineStrength = calculateInitialStrengthScore(age, height, weight, gender, currentProfile.gymExperience)
+            val newStrength = (currentProfile.strengthScore + (newBaselineStrength - oldBaselineStrength)).coerceIn(30.0, 999.0)
 
-            // Calculate new baseline estimation
-            val newBase = when (gender) {
-                "Male" -> weight * 1.2
-                "Female" -> weight * 0.9
-                else -> weight * 1.05
-            }
-            val newAgeMult = when {
-                age < 18 -> 0.8
-                age in 18..35 -> 1.0
-                else -> (1.0 - (age - 35) * 0.01).coerceAtLeast(0.6)
-            }
-            val newHeightMult = when {
-                height > 180.0 -> 1.05
-                height < 160.0 -> 0.95
-                else -> 1.0
-            }
-            val newBaseScore = newBase * newAgeMult * newHeightMult
-
-            // Calculate delta
-            val delta = newBaseScore - oldBaseScore
-
-            // Adjust strength score by delta
-            val newStrength = (currentProfile.strengthScore + delta).coerceIn(30.0, 999.0)
+            val oldBaselineStamina = calculateInitialStaminaScore(currentProfile.age, currentProfile.height, currentProfile.weight, currentProfile.gender, currentProfile.gymExperience)
+            val newBaselineStamina = calculateInitialStaminaScore(age, height, weight, gender, currentProfile.gymExperience)
+            val newStamina = (currentProfile.staminaScore + (newBaselineStamina - oldBaselineStamina)).coerceIn(30.0, 999.0)
 
             val updatedProfile = UserProfileEntity(
                 id = currentProfile.id,
@@ -1696,7 +1885,7 @@ class WorkoutViewModel(
                 weight = weight,
                 gender = gender,
                 strengthScore = newStrength,
-                staminaScore = currentProfile.staminaScore,
+                staminaScore = newStamina,
                 gymExperience = currentProfile.gymExperience
             )
             repository.saveUserProfile(updatedProfile)
