@@ -3,9 +3,12 @@ package com.example.workoutbuddy.ui.components
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -28,7 +31,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -41,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.workoutbuddy.audio.AppSound
+import com.example.workoutbuddy.ui.util.LocalSoundPlayer
+import com.example.workoutbuddy.ui.util.pressScale
 import com.example.workoutbuddy.data.database.ExerciseEntity
 import com.example.workoutbuddy.data.database.WorkoutEntity
 import com.example.workoutbuddy.data.database.WorkoutSetEntity
@@ -98,6 +106,7 @@ fun CalendarWidget(
     }
 
     var dragAmountSum by remember { mutableStateOf(0f) }
+    val soundPlayer = LocalSoundPlayer.current
 
     Card(
         modifier = modifier
@@ -184,8 +193,14 @@ fun CalendarWidget(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Calendar Days Grid
-            val rows = days.chunked(7)
+            // Calendar Days Grid - AnimatedContent slides/fades between months on swipe/arrow nav
+            AnimatedContent(
+                targetState = days,
+                label = "calendarMonthTransition",
+                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(220)) }
+            ) { animatedDays ->
+            val rows = animatedDays.chunked(7)
+            Column {
             rows.forEach { week ->
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -209,18 +224,23 @@ fun CalendarWidget(
                                 val workoutsOnDay = completedWorkouts.filter { isSameDay(it.date, dateTimestamp) }
                                 val hasWorkout = workoutsOnDay.isNotEmpty()
 
+                                val animatedBgColor by animateColorAsState(
+                                    targetValue = when {
+                                        isSelected -> BluePrimary
+                                        isToday -> BluePrimary.copy(alpha = 0.1f)
+                                        else -> Color.Transparent
+                                    },
+                                    label = "dayCellBackground"
+                                )
                                 Column(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .clip(CircleShape)
-                                        .background(
-                                            when {
-                                                isSelected -> BluePrimary
-                                                isToday -> BluePrimary.copy(alpha = 0.1f)
-                                                else -> Color.Transparent
-                                            }
-                                        )
-                                        .clickable { onDateSelected(dateTimestamp) },
+                                        .background(animatedBgColor)
+                                        .clickable {
+                                            soundPlayer.play(AppSound.BUTTON_TAP)
+                                            onDateSelected(dateTimestamp)
+                                        },
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
@@ -235,8 +255,8 @@ fun CalendarWidget(
                                             else -> TextDark
                                         }
                                     )
-                                    
-                                    if (hasWorkout) {
+
+                                    AnimatedVisibility(visible = hasWorkout, enter = fadeIn(), exit = fadeOut()) {
                                         Row(
                                             horizontalArrangement = Arrangement.Center,
                                             modifier = Modifier.padding(top = 2.dp)
@@ -263,6 +283,8 @@ fun CalendarWidget(
                         }
                     }
                 }
+            }
+            }
             }
         }
     }
@@ -295,27 +317,29 @@ fun ExerciseThumbnail(
         context.resources.getIdentifier(resName, "drawable", context.packageName)
     }
 
-    if (resId != 0) {
-        Image(
-            painter = painterResource(id = resId),
-            contentDescription = "$exerciseName thumbnail",
-            modifier = modifier
-                .clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop
-        )
-    } else {
-        Box(
-            modifier = modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(LightBlueContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.FitnessCenter,
-                contentDescription = "Placeholder",
-                tint = BluePrimary,
-                modifier = Modifier.fillMaxSize(0.5f)
+    Crossfade(targetState = resId, label = "exerciseThumbnailCrossfade") { animatedResId ->
+        if (animatedResId != 0) {
+            Image(
+                painter = painterResource(id = animatedResId),
+                contentDescription = "$exerciseName thumbnail",
+                modifier = modifier
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
             )
+        } else {
+            Box(
+                modifier = modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(LightBlueContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FitnessCenter,
+                    contentDescription = "Placeholder",
+                    tint = BluePrimary,
+                    modifier = Modifier.fillMaxSize(0.5f)
+                )
+            }
         }
     }
 }
@@ -352,10 +376,12 @@ fun ExerciseListItem(
         }
     }
 
+    val cardInteractionSource = remember { MutableInteractionSource() }
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .pressScale(cardInteractionSource)
+            .clickable(interactionSource = cardInteractionSource, indication = LocalIndication.current) { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
@@ -663,9 +689,11 @@ fun ExerciseDetailBottomSheet(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(exerciseState.sets, key = { it.id }) { set ->
+                    val soundPlayer = LocalSoundPlayer.current
                     val dismissState = rememberSwipeToDismissBoxState(
                         confirmValueChange = { dismissValue ->
                             if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
+                                soundPlayer.play(AppSound.WHOOSH)
                                 onRemoveSet(set.id)
                                 true
                             } else {
@@ -675,6 +703,7 @@ fun ExerciseDetailBottomSheet(
                     )
 
                     SwipeToDismissBox(
+                        modifier = Modifier.animateItem(),
                         state = dismissState,
                         enableDismissFromStartToEnd = false,
                         backgroundContent = {
@@ -702,6 +731,7 @@ fun ExerciseDetailBottomSheet(
 
                 if (isWorkoutStarted) {
                     item {
+                        val soundPlayer = LocalSoundPlayer.current
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -709,7 +739,10 @@ fun ExerciseDetailBottomSheet(
                             horizontalArrangement = Arrangement.Center
                         ) {
                             TextButton(
-                                onClick = onAddSet,
+                                onClick = {
+                                    soundPlayer.play(AppSound.POP)
+                                    onAddSet()
+                                },
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = BluePrimary)
@@ -1292,20 +1325,27 @@ fun SetRowItem(
                 },
             contentAlignment = Alignment.Center
         ) {
+            val iconScale = remember { Animatable(1f) }
+            LaunchedEffect(set.isCompleted, set.isPR) {
+                if (set.isCompleted) {
+                    iconScale.snapTo(0.5f)
+                    iconScale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
+                }
+            }
             if (set.isCompleted) {
                 if (set.isPR) {
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = "PR",
                         tint = GoldPR,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp).scale(iconScale.value)
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = "Completed",
                         tint = GreenSuccess,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp).scale(iconScale.value)
                     )
                 }
             } else {
@@ -1510,9 +1550,17 @@ fun CountdownTimerDialog(
     onCancel: () -> Unit,
     onMinimize: () -> Unit
 ) {
+    val soundPlayer = LocalSoundPlayer.current
+    val entrance = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        entrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+    }
     Dialog(onDismissRequest = onCancel) {
         Card(
-            modifier = Modifier.width(320.dp),
+            modifier = Modifier
+                .width(320.dp)
+                .scale(0.85f + 0.15f * entrance.value)
+                .alpha(entrance.value),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
@@ -1534,10 +1582,16 @@ fun CountdownTimerDialog(
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 // Circular Timer Representation - Center aligned & clickable to pause/resume
+                val urgencyScale by animateFloatAsState(
+                    targetValue = if (!isPaused && remainingSeconds in 1..3) 1.08f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+                    label = "urgencyPulse"
+                )
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(160.dp)
+                        .scale(urgencyScale)
                         .clip(CircleShape)
                         .clickable { onTapTimer() }
                 ) {
@@ -1578,24 +1632,24 @@ fun CountdownTimerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(
-                        onClick = onCancel,
+                        onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onCancel() },
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
                         Text("Cancel", color = RedDanger, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
-                    
+
                     OutlinedButton(
-                        onClick = onMinimize,
+                        onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onMinimize() },
                         modifier = Modifier.weight(1.2f),
                         shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
                         Text("Minimize", fontSize = 13.sp)
                     }
-                    
+
                     Button(
-                        onClick = onDone,
+                        onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onDone() },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
                         shape = RoundedCornerShape(12.dp),
@@ -1618,6 +1672,11 @@ fun RestTimerModal(
     onSkip: () -> Unit,
     onDismissRequest: () -> Unit
 ) {
+    val soundPlayer = LocalSoundPlayer.current
+    val entrance = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        entrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+    }
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
@@ -1627,7 +1686,7 @@ fun RestTimerModal(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.4f))
+                .background(Color.Black.copy(alpha = 0.4f * entrance.value))
                 .clickable { onDismissRequest() },
             contentAlignment = Alignment.BottomCenter
         ) {
@@ -1636,6 +1695,8 @@ fun RestTimerModal(
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(16.dp)
+                    .alpha(entrance.value)
+                    .scale(0.9f + 0.1f * entrance.value)
                     .clickable(enabled = false) { /* stop propagation */ },
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1680,14 +1741,14 @@ fun RestTimerModal(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         OutlinedButton(
-                            onClick = onDismissRequest,
+                            onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onDismissRequest() },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Minimize")
                         }
                         Button(
-                            onClick = onSkip,
+                            onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onSkip() },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
                             shape = RoundedCornerShape(12.dp)
@@ -1759,8 +1820,9 @@ fun CooldownBanner(
                 }
             }
             
+            val soundPlayer = LocalSoundPlayer.current
             TextButton(
-                onClick = onSkip,
+                onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onSkip() },
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
             ) {
                 Text("Skip", color = BluePrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -1825,8 +1887,9 @@ fun CountdownBanner(
                 )
             }
             
+            val soundPlayer = LocalSoundPlayer.current
             Button(
-                onClick = onDone,
+                onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onDone() },
                 colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),

@@ -1,10 +1,13 @@
 package com.example.workoutbuddy.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +32,10 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.example.workoutbuddy.audio.AppSound
 import com.example.workoutbuddy.theme.*
+import com.example.workoutbuddy.ui.util.LocalSoundPlayer
+import com.example.workoutbuddy.ui.util.pressScale
 import com.example.workoutbuddy.viewmodel.WorkoutViewModel
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import kotlin.math.roundToInt
@@ -523,33 +530,57 @@ fun OnboardingStep2(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        val soundPlayer = LocalSoundPlayer.current
+        val decrementInteractionSource = remember { MutableInteractionSource() }
+        val incrementInteractionSource = remember { MutableInteractionSource() }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth()
         ) {
             IconButton(
-                onClick = { if (age > 10) onAgeChange(age - 1) },
+                onClick = {
+                    if (age > 10) {
+                        soundPlayer.play(AppSound.BUTTON_TAP)
+                        onAgeChange(age - 1)
+                    }
+                },
+                interactionSource = decrementInteractionSource,
                 modifier = Modifier
                     .size(48.dp)
+                    .pressScale(decrementInteractionSource)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.05f))
             ) {
                 Icon(Icons.Default.Remove, contentDescription = "Decrease Age", tint = Color.White)
             }
 
+            val ageScale = remember { Animatable(1f) }
+            LaunchedEffect(age) {
+                ageScale.snapTo(0.85f)
+                ageScale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+            }
             Text(
                 text = "$age",
                 fontSize = 64.sp,
                 fontWeight = FontWeight.Black,
                 color = Color.White,
-                modifier = Modifier.padding(horizontal = 32.dp)
+                modifier = Modifier
+                    .padding(horizontal = 32.dp)
+                    .scale(ageScale.value)
             )
 
             IconButton(
-                onClick = { if (age < 100) onAgeChange(age + 1) },
+                onClick = {
+                    if (age < 100) {
+                        soundPlayer.play(AppSound.BUTTON_TAP)
+                        onAgeChange(age + 1)
+                    }
+                },
+                interactionSource = incrementInteractionSource,
                 modifier = Modifier
                     .size(48.dp)
+                    .pressScale(incrementInteractionSource)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.05f))
             ) {
@@ -565,6 +596,7 @@ fun OnboardingStep2(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingStep3(
     height: Double,
@@ -595,10 +627,23 @@ fun OnboardingStep3(
                 Text("Height", color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
                 Text("${height.toInt()} cm", color = Color.White, fontWeight = FontWeight.Black)
             }
+            val heightInteractionSource = remember { MutableInteractionSource() }
+            val heightDragging by heightInteractionSource.collectIsDraggedAsState()
+            val heightThumbScale by animateFloatAsState(if (heightDragging) 1.3f else 1f, label = "heightThumbScale")
             Slider(
                 value = height.toFloat(),
                 onValueChange = { onHeightChange(it.toDouble()) },
                 valueRange = 100f..230f,
+                interactionSource = heightInteractionSource,
+                thumb = {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .scale(heightThumbScale)
+                            .clip(CircleShape)
+                            .background(BlueSecondary)
+                    )
+                },
                 colors = SliderDefaults.colors(
                     activeTrackColor = BluePrimary,
                     inactiveTrackColor = Color.White.copy(alpha = 0.1f),
@@ -619,10 +664,23 @@ fun OnboardingStep3(
                 Text("Weight", color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
                 Text("${String.format("%.1f", weight)} kg", color = Color.White, fontWeight = FontWeight.Black)
             }
+            val weightInteractionSource = remember { MutableInteractionSource() }
+            val weightDragging by weightInteractionSource.collectIsDraggedAsState()
+            val weightThumbScale by animateFloatAsState(if (weightDragging) 1.3f else 1f, label = "weightThumbScale")
             Slider(
                 value = weight.toFloat(),
                 onValueChange = { onWeightChange(it.toDouble()) },
                 valueRange = 30f..180f,
+                interactionSource = weightInteractionSource,
+                thumb = {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .scale(weightThumbScale)
+                            .clip(CircleShape)
+                            .background(BlueSecondary)
+                    )
+                },
                 colors = SliderDefaults.colors(
                     activeTrackColor = BluePrimary,
                     inactiveTrackColor = Color.White.copy(alpha = 0.1f),

@@ -1,10 +1,12 @@
 package com.example.workoutbuddy.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,15 +18,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.workoutbuddy.audio.AppSound
 import com.example.workoutbuddy.theme.*
 import com.example.workoutbuddy.ui.components.*
+import com.example.workoutbuddy.ui.util.LocalSoundPlayer
+import com.example.workoutbuddy.ui.util.pressScale
 import com.example.workoutbuddy.viewmodel.WorkoutViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -333,12 +340,20 @@ fun WorkoutScreen(
         }
 
         // Float Cooldown Timer Banner (minimized state) above the button
-        if (cooldownExercise != null && !showRestModal && selectedExerciseId == null) {
+        AnimatedVisibility(
+            visible = cooldownExercise != null && !showRestModal && selectedExerciseId == null,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+            exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
+        ) {
+            val soundPlayer = LocalSoundPlayer.current
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .padding(bottom = if (isStarted) 80.dp else 16.dp)
-                    .clickable { showRestModal = true }
+                    .clickable {
+                        soundPlayer.play(AppSound.BUTTON_TAP)
+                        showRestModal = true
+                    }
             ) {
                 CooldownBanner(
                     exerciseName = cooldownExercise ?: "",
@@ -351,13 +366,20 @@ fun WorkoutScreen(
 
         // Bottom Start Workout button or Floating Complete Workout button
         if (!isStarted) {
+            val soundPlayer = LocalSoundPlayer.current
+            val startInteractionSource = remember { MutableInteractionSource() }
             Button(
-                onClick = { viewModel.startWorkout() },
+                onClick = {
+                    soundPlayer.play(AppSound.WHOOSH)
+                    viewModel.startWorkout()
+                },
+                interactionSource = startInteractionSource,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .pressScale(startInteractionSource),
                 colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
                 shape = RoundedCornerShape(12.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
@@ -367,6 +389,7 @@ fun WorkoutScreen(
                 Text("Start Workout", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
             }
         } else {
+            val completeInteractionSource = remember { MutableInteractionSource() }
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -377,7 +400,9 @@ fun WorkoutScreen(
                     icon = { Icon(Icons.Default.Check, contentDescription = null, tint = Color.White) },
                     onClick = { viewModel.completeWorkout() },
                     containerColor = GreenSuccess,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    interactionSource = completeInteractionSource,
+                    modifier = Modifier.pressScale(completeInteractionSource)
                 )
             }
         }
@@ -397,12 +422,20 @@ fun WorkoutScreen(
         }
 
         // Float Countdown Timer Banner (minimized state) above the button
-        if (isCountdownActive && !showCountdownModal && selectedExerciseId == null) {
+        AnimatedVisibility(
+            visible = isCountdownActive && !showCountdownModal && selectedExerciseId == null,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+            exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
+        ) {
+            val soundPlayer = LocalSoundPlayer.current
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .padding(bottom = if (isStarted) 80.dp else 16.dp)
-                    .clickable { showCountdownModal = true }
+                    .clickable {
+                        soundPlayer.play(AppSound.BUTTON_TAP)
+                        showCountdownModal = true
+                    }
             ) {
                 CountdownBanner(
                     exerciseName = countdownExercise ?: "",
@@ -428,11 +461,21 @@ fun WorkoutScreen(
         // screen and returns to the main workout screen, rather than popping up over it.
         if (selectedExerciseId == null) {
         recordBrokenCelebration?.let { celeb ->
+            val cardEntrance = remember { Animatable(0f) }
+            val trophyBounce = remember { Animatable(0f) }
+            LaunchedEffect(celeb) {
+                cardEntrance.snapTo(0f)
+                trophyBounce.snapTo(0f)
+                cardEntrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                trophyBounce.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessLow))
+            }
             Dialog(onDismissRequest = { viewModel.dismissRecordCelebration() }) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(16.dp)
+                        .scale(0.8f + 0.2f * cardEntrance.value)
+                        .alpha(cardEntrance.value),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.5.dp, GoldPR),
@@ -446,6 +489,7 @@ fun WorkoutScreen(
                         Box(
                             modifier = Modifier
                                 .size(80.dp)
+                                .scale(0.3f + 0.7f * trophyBounce.value)
                                 .clip(CircleShape)
                                 .background(Color(0xFFFFFBEB))
                                 .border(2.dp, GoldPR, CircleShape),
@@ -627,12 +671,18 @@ fun WorkoutSummaryDialog(
     onUpdateDuration: (Long) -> Unit
 ) {
     var showEditDurationDialog by remember { mutableStateOf(false) }
+    val entrance = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        entrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(16.dp)
+                .scale(0.85f + 0.15f * entrance.value)
+                .alpha(entrance.value),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
@@ -672,20 +722,40 @@ fun WorkoutSummaryDialog(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val animatedCalories by animateIntAsState(
+                        targetValue = summary.totalCalories.toInt(),
+                        animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+                        label = "caloriesCountUp"
+                    )
+                    val animatedSteps by animateIntAsState(
+                        targetValue = summary.totalSteps,
+                        animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+                        label = "stepsCountUp"
+                    )
+                    val animatedPrCount by animateIntAsState(
+                        targetValue = summary.prCount,
+                        animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+                        label = "prCountUp"
+                    )
+                    val animatedVolume by animateIntAsState(
+                        targetValue = summary.totalVolumeKg.toInt(),
+                        animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+                        label = "volumeCountUp"
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // Calories card
                         StatBox(
-                            value = "${summary.totalCalories.toInt()}",
+                            value = "$animatedCalories",
                             label = "kcal",
                             subtext = "Burned",
                             modifier = Modifier.weight(1f)
                         )
                         // Steps card
                         StatBox(
-                            value = "${summary.totalSteps}",
+                            value = "$animatedSteps",
                             label = "steps",
                             subtext = "Moved",
                             modifier = Modifier.weight(1f)
@@ -697,7 +767,7 @@ fun WorkoutSummaryDialog(
                     ) {
                         // PRs card
                         StatBox(
-                            value = "${summary.prCount}",
+                            value = "$animatedPrCount",
                             label = "Records",
                             subtext = "Broken",
                             modifier = Modifier.weight(1f),
@@ -705,7 +775,7 @@ fun WorkoutSummaryDialog(
                         )
                         // Volume card
                         StatBox(
-                            value = "${summary.totalVolumeKg.toInt()}",
+                            value = "$animatedVolume",
                             label = "kg",
                             subtext = "Volume",
                             modifier = Modifier.weight(1f)

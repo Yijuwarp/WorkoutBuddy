@@ -1,0 +1,10 @@
+Sound assets in this directory:
+
+tick.ogg, pop.ogg, whoosh.ogg, button_tap.ogg, success_ding.ogg
+  Source: Kenney "Interface Sounds" pack (https://kenney.nl/assets/interface-sounds)
+  License: CC0 1.0 Universal (Creative Commons Zero / Public Domain)
+  Original filenames: tick_001.ogg, drop_002.ogg, scroll_003.ogg, click_001.ogg, confirmation_002.ogg
+  Attribution not required, but credit: Kenney (www.kenney.nl)
+
+chime.ogg
+  Pre-existing in repo; provenance not verified. Used for record-broken/PR celebration.

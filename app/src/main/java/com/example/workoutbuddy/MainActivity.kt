@@ -9,10 +9,12 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.workoutbuddy.theme.WorkoutBuddyTheme
+import com.example.workoutbuddy.ui.util.LocalSoundPlayer
 import com.example.workoutbuddy.viewmodel.WorkoutViewModel
 
 class MainActivity : ComponentActivity() {
@@ -37,11 +39,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             WorkoutBuddyTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    MainNavigation(workoutViewModel)
+                CompositionLocalProvider(LocalSoundPlayer provides workoutViewModel.soundPlayer) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        MainNavigation(workoutViewModel)
+                    }
                 }
             }
         }

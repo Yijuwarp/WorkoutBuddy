@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.app.Application
-import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -14,6 +13,9 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.workoutbuddy.R
+import com.example.workoutbuddy.audio.AppSound
+import com.example.workoutbuddy.audio.Haptics
+import com.example.workoutbuddy.audio.SoundPlayer
 import com.example.workoutbuddy.data.WorkoutRepository
 import com.example.workoutbuddy.data.database.*
 import kotlinx.coroutines.*
@@ -43,6 +45,8 @@ class WorkoutViewModel(
     application: Application,
     private val repository: WorkoutRepository
 ) : AndroidViewModel(application) {
+
+    val soundPlayer = SoundPlayer(application)
 
     val isExerciseScreenOpen = MutableStateFlow(false)
 
@@ -605,6 +609,8 @@ class WorkoutViewModel(
                 if (match != null) {
                     if (isCompleted) {
                         newlyCompletedSetIds.add(setId)
+                        soundPlayer.play(AppSound.TICK)
+                        Haptics.tick(getApplication())
                     } else {
                         newlyCompletedSetIds.remove(setId)
                     }
@@ -898,6 +904,9 @@ class WorkoutViewModel(
             while (cooldownRemaining.value > 0) {
                 delay(1000)
                 cooldownRemaining.value -= 1
+                if (cooldownRemaining.value in 1..3) {
+                    soundPlayer.play(AppSound.TICK)
+                }
             }
             playBeep(isRestTimer = true)
             cooldownExerciseName.value = null
@@ -934,6 +943,9 @@ class WorkoutViewModel(
                 delay(1000)
                 if (!isCountdownPaused.value) {
                     countdownRemaining.value -= 1
+                    if (countdownRemaining.value in 1..3) {
+                        soundPlayer.play(AppSound.TICK)
+                    }
                 }
             }
             onCountdownComplete()
@@ -1012,6 +1024,7 @@ class WorkoutViewModel(
     // --- Audio Player ---
 
     private fun playBeep(isRestTimer: Boolean) {
+        Haptics.success(getApplication())
         viewModelScope.launch(Dispatchers.Default) {
             try {
                 val toneGen = ToneGenerator(AudioManager.STREAM_MUSIC, 100) // 100 is Max Volume
@@ -1043,6 +1056,11 @@ class WorkoutViewModel(
         }
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        soundPlayer.release()
+    }
+
     // --- Completing Workout ---
 
     fun completeWorkout() {
@@ -1051,6 +1069,11 @@ class WorkoutViewModel(
             val states = activeExerciseStates.value
             val allSets = states.flatMap { it.sets }
             val completedSets = allSets.filter { it.isCompleted }
+
+            if (completedSets.isNotEmpty()) {
+                soundPlayer.play(AppSound.SUCCESS_DING)
+                Haptics.success(getApplication())
+            }
 
             if (completedSets.isEmpty()) {
                 // If nothing completed, just delete/discard draft
@@ -1597,6 +1620,14 @@ class WorkoutViewModel(
         return celebrationBaselineForExercise.getOrPut(key) { freshOldRecord }
     }
 
+    // Single funnel for every "record broken" celebration regardless of exercise type, so the
+    // chime + haptic always accompany the popup and can't be missed at one of the four call sites.
+    private fun celebrateRecordBroken(state: RecordBrokenState) {
+        recordBrokenCelebration.value = state
+        soundPlayer.play(AppSound.CHIME)
+        Haptics.celebrate(getApplication())
+    }
+
     private suspend fun reevaluatePRsForExercise(workoutId: Long, exerciseId: Int) {
         val exercise = repository.getExerciseById(exerciseId) ?: return
         val sets = repository.getSetsForWorkout(workoutId).filter { it.exerciseId == exerciseId }
@@ -1626,7 +1657,7 @@ class WorkoutViewModel(
                     val freshOldRec = "${formatDecimal(pastBestSet.weight ?: 0.0)} kg x ${pastBestSet.reps ?: 0}"
                     val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                     val newRec = "${formatDecimal(currentBestSet.weight ?: 0.0)} kg x ${currentBestSet.reps ?: 0}"
-                    recordBrokenCelebration.value = RecordBrokenState(exercise.name, oldRec, newRec)
+                    celebrateRecordBroken(RecordBrokenState(exercise.name, oldRec, newRec))
                 }
 
                 val prSet = if (hasNewPR) currentBestSet else null
@@ -1650,7 +1681,7 @@ class WorkoutViewModel(
                         val freshOldRec = formatTime(pastBestTime)
                         val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                         val newRec = formatTime(maxTime)
-                        recordBrokenCelebration.value = RecordBrokenState(exercise.name, oldRec, newRec)
+                        celebrateRecordBroken(RecordBrokenState(exercise.name, oldRec, newRec))
                     }
 
                     sets.forEach { set ->
@@ -1693,7 +1724,7 @@ class WorkoutViewModel(
                         val freshOldRec = "${formatDecimal(pastBestSet.distance ?: 0.0)} km$oldIncl"
                         val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                         val newRec = "${formatDecimal(currentBestSet.distance ?: 0.0)} km$newIncl"
-                        recordBrokenCelebration.value = RecordBrokenState(exercise.name, oldRec, newRec)
+                        celebrateRecordBroken(RecordBrokenState(exercise.name, oldRec, newRec))
                     }
 
                     val prSet = if (hasNewPR) currentBestSet else null
@@ -1717,7 +1748,7 @@ class WorkoutViewModel(
                     val freshOldRec = formatTime(pastBestTime)
                     val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                     val newRec = formatTime(maxTime)
-                    recordBrokenCelebration.value = RecordBrokenState(exercise.name, oldRec, newRec)
+                    celebrateRecordBroken(RecordBrokenState(exercise.name, oldRec, newRec))
                 }
 
                 sets.forEach { set ->
