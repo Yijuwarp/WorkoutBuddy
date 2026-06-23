@@ -24,7 +24,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.example.workoutbuddy.data.Equipment
 import com.example.workoutbuddy.theme.*
+import com.example.workoutbuddy.ui.components.EquipmentPickerList
 import com.example.workoutbuddy.viewmodel.WorkoutViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +45,7 @@ fun ProfileScreen(
     var ageText by remember { mutableStateOf("") }
     var heightText by remember { mutableStateOf("") }
     var weightText by remember { mutableStateOf("") }
+    var showEquipmentDialog by remember { mutableStateOf(false) }
 
     // Sync input states once profile is loaded
     LaunchedEffect(profileState) {
@@ -321,6 +325,68 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Save Changes", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
             }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // --- Settings ---
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = TextDark,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Rest Timers", fontWeight = FontWeight.Bold, color = TextDark, fontSize = 14.sp)
+                        Text(
+                            "Automatically start a rest timer after each completed set",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                    Switch(
+                        checked = p.restTimerEnabled,
+                        onCheckedChange = { viewModel.setRestTimerEnabled(it) },
+                        colors = SwitchDefaults.colors(checkedTrackColor = BluePrimary)
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showEquipmentDialog = true }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Equipment", fontWeight = FontWeight.Bold, color = TextDark, fontSize = 14.sp)
+                        Text(
+                            "Choose what you have access to so workouts only use it",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = TextMuted)
+                }
+            }
         } ?: Box(
             modifier = Modifier.fillMaxWidth().height(200.dp),
             contentAlignment = Alignment.Center
@@ -329,5 +395,55 @@ fun ProfileScreen(
         }
         
         Spacer(modifier = Modifier.height(80.dp)) // Extra padding at bottom
+    }
+
+    if (showEquipmentDialog) {
+        val owned = remember(profileState) {
+            Equipment.parseCsv(profileState?.equipmentOwned ?: Equipment.allIdsCsv)
+        }
+        var selected by remember(profileState) { mutableStateOf(owned) }
+
+        Dialog(onDismissRequest = { showEquipmentDialog = false }) {
+            Card(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Your Equipment",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                            color = TextDark
+                        )
+                        IconButton(onClick = { showEquipmentDialog = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = TextMuted)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    EquipmentPickerList(
+                        selected = selected,
+                        onToggle = { equipment, isOwned ->
+                            selected = if (isOwned) selected + equipment else selected - equipment
+                            viewModel.setEquipmentOwned(equipment, isOwned)
+                        },
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = { showEquipmentDialog = false },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
 }

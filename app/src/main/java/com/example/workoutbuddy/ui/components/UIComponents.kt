@@ -49,7 +49,9 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.workoutbuddy.audio.AppSound
 import com.example.workoutbuddy.ui.util.LocalSoundPlayer
 import com.example.workoutbuddy.ui.util.pressScale
+import com.example.workoutbuddy.data.Equipment
 import com.example.workoutbuddy.data.database.ExerciseEntity
+import com.example.workoutbuddy.data.database.ExerciseUsageStat
 import com.example.workoutbuddy.data.database.WorkoutEntity
 import com.example.workoutbuddy.data.database.WorkoutSetEntity
 import com.example.workoutbuddy.viewmodel.ActiveExerciseState
@@ -411,7 +413,7 @@ fun ExerciseListItem(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!isWorkoutStarted) {
+                run {
                     var showMenu by remember { mutableStateOf(false) }
 
                     Box {
@@ -1925,31 +1927,73 @@ private fun formatTime(seconds: Int): String {
 // --- Exercise Picker Dialog ---
  
 @OptIn(ExperimentalMaterial3Api::class)
+enum class ExerciseSortMode(val label: String) {
+    ALPHABETICAL("Alphabetical"),
+    MOST_LOGGED("Most logged"),
+    RECENT("Recent")
+}
+
+enum class EquipmentFilterMode(val label: String) {
+    ALL("All"),
+    AVAILABLE("Available"),
+    BODYWEIGHT("Bodyweight")
+}
+
 @Composable
 fun ExercisePickerDialog(
     title: String,
     exercises: List<ExerciseEntity>,
     onDismiss: () -> Unit,
     onExerciseSelected: (ExerciseEntity) -> Unit,
-    onCreateExercise: ((String, String, String, String) -> Unit)? = null
+    onCreateExercise: ((String, String, String, String) -> Unit)? = null,
+    ownedEquipment: Set<Equipment> = Equipment.entries.toSet(),
+    usageStats: Map<Int, ExerciseUsageStat> = emptyMap()
 ) {
     var isCreating by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
     var newType by remember { mutableStateOf("LIFT") }
     var selectedBodyParts by remember { mutableStateOf(emptySet<String>()) }
     var newImpact by remember { mutableStateOf("MEDIUM") }
- 
+
     var searchQuery by remember { mutableStateOf("") }
-    
+
     // Tab state: 0 = All, 1 = Muscle Group
     var activeTab by remember { mutableStateOf(0) }
     var selectedMuscleGroup by remember { mutableStateOf<String?>(null) }
     var showBodyPartPicker by remember { mutableStateOf(false) }
- 
-    val filteredExercises = remember(searchQuery, exercises) {
-        exercises.filter { it.name.contains(searchQuery, ignoreCase = true) || it.bodyPart.contains(searchQuery, ignoreCase = true) }
+
+    var showSortFilterMenu by remember { mutableStateOf(false) }
+    var sortMode by remember { mutableStateOf(ExerciseSortMode.ALPHABETICAL) }
+    var equipmentFilter by remember { mutableStateOf(EquipmentFilterMode.AVAILABLE) }
+
+    fun passesEquipmentFilter(exercise: ExerciseEntity): Boolean {
+        return when (equipmentFilter) {
+            EquipmentFilterMode.ALL -> true
+            EquipmentFilterMode.BODYWEIGHT -> exercise.equipment.isBlank()
+            EquipmentFilterMode.AVAILABLE -> {
+                val required = Equipment.parseCsv(exercise.equipment)
+                required.isEmpty() || required.all { it in ownedEquipment }
+            }
+        }
     }
- 
+
+    fun sortExercises(list: List<ExerciseEntity>): List<ExerciseEntity> {
+        return when (sortMode) {
+            ExerciseSortMode.ALPHABETICAL -> list.sortedBy { it.name }
+            ExerciseSortMode.MOST_LOGGED -> list.sortedByDescending { usageStats[it.id]?.logCount ?: 0 }
+            ExerciseSortMode.RECENT -> list.sortedByDescending { usageStats[it.id]?.lastUsedDate ?: 0L }
+        }
+    }
+
+    val filteredExercises = remember(searchQuery, exercises, sortMode, equipmentFilter) {
+        sortExercises(
+            exercises.filter {
+                (it.name.contains(searchQuery, ignoreCase = true) || it.bodyPart.contains(searchQuery, ignoreCase = true)) &&
+                    passesEquipmentFilter(it)
+            }
+        )
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -2150,15 +2194,81 @@ fun ExercisePickerDialog(
                     }
  
                     if (activeTab == 0) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
+                        Row(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            placeholder = { Text("Search exercises...") },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                            singleLine = true
-                        )
- 
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier.weight(1f),
+                                placeholder = { Text("Search exercises...") },
+                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box {
+                                IconButton(
+                                    onClick = { showSortFilterMenu = true },
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .border(1.dp, BorderLight, RoundedCornerShape(12.dp))
+                                ) {
+                                    Icon(Icons.Default.FilterList, contentDescription = "Sort and filter", tint = BluePrimary)
+                                }
+                                DropdownMenu(
+                                    expanded = showSortFilterMenu,
+                                    onDismissRequest = { showSortFilterMenu = false }
+                                ) {
+                                    Text(
+                                        "Sort by",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = TextMuted,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                    )
+                                    ExerciseSortMode.entries.forEach { mode ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    if (sortMode == mode) {
+                                                        Icon(Icons.Default.Check, contentDescription = null, tint = BluePrimary, modifier = Modifier.size(18.dp))
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                    } else {
+                                                        Spacer(modifier = Modifier.width(26.dp))
+                                                    }
+                                                    Text(mode.label)
+                                                }
+                                            },
+                                            onClick = { sortMode = mode }
+                                        )
+                                    }
+                                    HorizontalDivider(color = BorderLight.copy(alpha = 0.5f))
+                                    Text(
+                                        "Equipment",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = TextMuted,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                    )
+                                    EquipmentFilterMode.entries.forEach { mode ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    if (equipmentFilter == mode) {
+                                                        Icon(Icons.Default.Check, contentDescription = null, tint = BluePrimary, modifier = Modifier.size(18.dp))
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                    } else {
+                                                        Spacer(modifier = Modifier.width(26.dp))
+                                                    }
+                                                    Text(mode.label)
+                                                }
+                                            },
+                                            onClick = { equipmentFilter = mode }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         LazyColumn(
                             modifier = Modifier.weight(1f).fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -2240,11 +2350,14 @@ fun ExercisePickerDialog(
                                 }
                             }
                         } else {
-                            val muscleFilteredExercises = remember(searchQuery, exercises, selectedMuscleGroup) {
-                                exercises.filter {
-                                    (it.bodyPart.contains(selectedMuscleGroup!!, ignoreCase = true)) &&
-                                    (searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true))
-                                }
+                            val muscleFilteredExercises = remember(searchQuery, exercises, selectedMuscleGroup, sortMode, equipmentFilter) {
+                                sortExercises(
+                                    exercises.filter {
+                                        (it.bodyPart.contains(selectedMuscleGroup!!, ignoreCase = true)) &&
+                                        (searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true)) &&
+                                        passesEquipmentFilter(it)
+                                    }
+                                )
                             }
  
                             OutlinedTextField(

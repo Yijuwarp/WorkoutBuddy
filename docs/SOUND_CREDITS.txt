@@ -7,4 +7,8 @@ tick.ogg, pop.ogg, whoosh.ogg, button_tap.ogg, success_ding.ogg
   Attribution not required, but credit: Kenney (www.kenney.nl)
 
 chime.ogg
-  Pre-existing in repo; provenance not verified. Used for record-broken/PR celebration.
+  Source: Kenney "Music Jingles" pack (https://kenney.nl/assets/music-jingles)
+  License: CC0 1.0 Universal (Creative Commons Zero / Public Domain)
+  Original filename: jingles_PIZZI10.ogg ("Pizzicato jingles" set)
+  Attribution not required, but credit: Kenney (www.kenney.nl)
+  Used for record-broken/PR celebration.

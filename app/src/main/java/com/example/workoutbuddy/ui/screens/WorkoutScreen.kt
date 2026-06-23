@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.workoutbuddy.audio.AppSound
+import com.example.workoutbuddy.data.Equipment
 import com.example.workoutbuddy.theme.*
 import com.example.workoutbuddy.ui.components.*
 import com.example.workoutbuddy.ui.util.LocalSoundPlayer
@@ -48,6 +49,11 @@ fun WorkoutScreen(
     val recordBrokenCelebration by viewModel.recordBrokenCelebration.collectAsState()
     val displayedIntensity by viewModel.displayedIntensity.collectAsState()
     val displayedCalories by viewModel.displayedCalories.collectAsState()
+    val userProfileForEquipment by viewModel.userProfile.collectAsState()
+    val ownedEquipment = remember(userProfileForEquipment) {
+        Equipment.parseCsv(userProfileForEquipment?.equipmentOwned ?: Equipment.allIdsCsv)
+    }
+    val exerciseUsageStats by viewModel.exerciseUsageStats.collectAsState()
 
     // Countdown and Cooldown states
     val cooldownExercise by viewModel.cooldownExerciseName.collectAsState()
@@ -67,6 +73,7 @@ fun WorkoutScreen(
     var selectedExerciseId by remember { mutableStateOf<Int?>(null) }
     var showRestModal by remember { mutableStateOf(false) }
     var showCountdownModal by remember { mutableStateOf(false) }
+    var showIncompleteWarning by remember { mutableStateOf(false) }
 
     LaunchedEffect(cooldownExercise) {
         if (cooldownExercise != null) {
@@ -256,7 +263,7 @@ fun WorkoutScreen(
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text("Strength target", fontSize = 11.sp, color = TextMuted)
-                                        Text("${workout.startingStrengthScore.toInt()}", fontWeight = FontWeight.Bold, color = TextDark)
+                                        Text("${(workout.startingStrengthScore + 2).toInt()}", fontWeight = FontWeight.Bold, color = TextDark)
                                     }
                                     Box(modifier = Modifier.width(1.dp).height(24.dp).background(BorderLight))
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -390,21 +397,52 @@ fun WorkoutScreen(
             }
         } else {
             val completeInteractionSource = remember { MutableInteractionSource() }
-            Box(
+            Button(
+                onClick = {
+                    val hasIncomplete = exercises.any { state -> state.sets.any { !it.isCompleted } }
+                    if (hasIncomplete) {
+                        showIncompleteWarning = true
+                    } else {
+                        viewModel.completeWorkout()
+                    }
+                },
+                interactionSource = completeInteractionSource,
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .height(56.dp)
+                    .pressScale(completeInteractionSource),
+                colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
-                ExtendedFloatingActionButton(
-                    text = { Text("Complete Workout", fontWeight = FontWeight.Bold, color = Color.White) },
-                    icon = { Icon(Icons.Default.Check, contentDescription = null, tint = Color.White) },
-                    onClick = { viewModel.completeWorkout() },
-                    containerColor = GreenSuccess,
-                    shape = RoundedCornerShape(12.dp),
-                    interactionSource = completeInteractionSource,
-                    modifier = Modifier.pressScale(completeInteractionSource)
-                )
+                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Complete Workout", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
             }
+        }
+
+        // Incomplete Exercises Warning
+        if (showIncompleteWarning) {
+            AlertDialog(
+                onDismissRequest = { showIncompleteWarning = false },
+                title = { Text("Incomplete Exercises", fontWeight = FontWeight.Bold) },
+                text = { Text("You still have unfinished sets. Complete the workout anyway?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showIncompleteWarning = false
+                        viewModel.completeWorkout()
+                    }) {
+                        Text("Complete Anyway", color = RedDanger, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showIncompleteWarning = false }) {
+                        Text("Keep Going")
+                    }
+                }
+            )
         }
 
         // Countdown Timer Overlay Dialog
@@ -593,7 +631,9 @@ fun WorkoutScreen(
                     val cat = activeWorkout?.category ?: "PUSH"
                     viewModel.createAndAddExerciseToWorkout(name, type, bodyPart, impactLevel, cat)
                     showAddExerciseDialog = false
-                }
+                },
+                ownedEquipment = ownedEquipment,
+                usageStats = exerciseUsageStats
             )
         }
 
@@ -611,7 +651,9 @@ fun WorkoutScreen(
                     viewModel.onExerciseScreenClosed(oldId)
                     showReplaceDialogForExerciseId = null
                     selectedExerciseId = null
-                }
+                },
+                ownedEquipment = ownedEquipment,
+                usageStats = exerciseUsageStats
             )
         }
 

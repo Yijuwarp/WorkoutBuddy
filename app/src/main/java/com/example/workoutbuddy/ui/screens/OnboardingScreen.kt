@@ -57,6 +57,7 @@ fun OnboardingScreen(
     var height by remember { mutableStateOf(175.0) }
     var weight by remember { mutableStateOf(70.0) }
     var gymExperience by remember { mutableStateOf("Beginner") }
+    var equipmentOwned by remember { mutableStateOf(com.example.workoutbuddy.data.Equipment.entries.toSet()) }
 
     val gradientBg = Brush.verticalGradient(
         colors = listOf(
@@ -128,14 +129,14 @@ fun OnboardingScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
                     ) {
-                        for (i in 1..5) {
+                        for (i in 1..6) {
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
                                     .background(if (step >= i) BlueSecondary else Color.White.copy(alpha = 0.2f))
                             )
-                            if (i < 5) {
+                            if (i < 6) {
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
                         }
@@ -176,7 +177,14 @@ fun OnboardingScreen(
                                 experience = gymExperience,
                                 onExperienceChange = { gymExperience = it }
                             )
-                            5 -> OnboardingStep5(
+                            5 -> OnboardingEquipmentStep(
+                                selected = equipmentOwned,
+                                onToggle = { equipment, owned ->
+                                    equipmentOwned = if (owned) equipmentOwned + equipment else equipmentOwned - equipment
+                                },
+                                onSkip = { step++ }
+                            )
+                            6 -> OnboardingStep5(
                                 nickname = nickname,
                                 gender = gender,
                                 age = age,
@@ -185,6 +193,7 @@ fun OnboardingScreen(
                                 gymExperience = gymExperience,
                                 onComplete = {
                                     viewModel.saveUserProfile(nickname.ifBlank { "Buddy" }, age, height, weight, gender, gymExperience)
+                                    viewModel.setEquipmentOwnedSet(equipmentOwned)
                                 }
                             )
                         }
@@ -212,7 +221,7 @@ fun OnboardingScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                         }
 
-                        if (step < 5) {
+                        if (step < 6) {
                             Button(
                                 onClick = {
                                     if (step == 1 && nickname.isBlank()) {
@@ -238,6 +247,48 @@ fun OnboardingScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun OnboardingEquipmentStep(
+    selected: Set<com.example.workoutbuddy.data.Equipment>,
+    onToggle: (com.example.workoutbuddy.data.Equipment, Boolean) -> Unit,
+    onSkip: () -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "What equipment do you have?",
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black, color = Color.White),
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = "We'll only recommend exercises you can actually do. Everything is on by default.",
+            style = MaterialTheme.typography.bodyMedium.copy(color = Color.White.copy(alpha = 0.7f)),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = 12.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+        ) {
+            com.example.workoutbuddy.ui.components.EquipmentPickerColumn(
+                selected = selected,
+                onToggle = onToggle,
+                modifier = Modifier.padding(horizontal = 12.dp).verticalScroll(rememberScrollState()),
+                textColor = Color.White
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        TextButton(onClick = onSkip) {
+            Text("Skip for now", color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
         }
     }
 }

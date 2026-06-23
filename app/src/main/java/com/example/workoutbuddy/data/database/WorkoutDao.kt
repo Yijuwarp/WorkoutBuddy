@@ -97,6 +97,11 @@ interface WorkoutDao {
     @Query("SELECT COUNT(DISTINCT s.workoutId) FROM workout_sets s INNER JOIN workouts w ON s.workoutId = w.id WHERE s.exerciseId = :exerciseId AND s.isCompleted = 1 AND w.isCompleted = 1")
     fun getCompletedWorkoutCountForExercise(exerciseId: Int): Int
 
+    // Per-exercise usage stats (times logged + most recent use) for the exercise picker's
+    // "Most Logged" / "Recent" sort modes, computed in one pass rather than N+1 per exercise.
+    @Query("SELECT s.exerciseId AS exerciseId, COUNT(*) AS logCount, MAX(w.date) AS lastUsedDate FROM workout_sets s INNER JOIN workouts w ON s.workoutId = w.id WHERE s.isCompleted = 1 AND w.isCompleted = 1 GROUP BY s.exerciseId")
+    fun getExerciseUsageStats(): List<ExerciseUsageStat>
+
     // User Profile Queries
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertUserProfile(profile: UserProfileEntity)

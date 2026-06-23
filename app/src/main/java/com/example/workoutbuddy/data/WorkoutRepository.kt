@@ -123,6 +123,10 @@ class WorkoutRepository(private val workoutDao: WorkoutDao) {
         workoutDao.getCompletedWorkoutCountForExercise(exerciseId)
     }
 
+    suspend fun getExerciseUsageStats(): List<ExerciseUsageStat> = withContext(Dispatchers.IO) {
+        workoutDao.getExerciseUsageStats()
+    }
+
     fun getUserProfileFlow(): Flow<UserProfileEntity?> = workoutDao.getUserProfileFlow()
 
     suspend fun getUserProfile(): UserProfileEntity? = withContext(Dispatchers.IO) {

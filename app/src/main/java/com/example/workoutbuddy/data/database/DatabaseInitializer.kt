@@ -1,5 +1,7 @@
 package com.example.workoutbuddy.data.database
 
+import com.example.workoutbuddy.data.inferEquipmentForExercise
+
 object DatabaseInitializer {
     fun getSeedExercises(): List<ExerciseEntity> {
         return listOf(
@@ -906,6 +908,6 @@ object DatabaseInitializer {
                 impactLevel = "HIGH",
                 youtubeUrl = "https://www.youtube.com/watch?v=pQb2xIGioyQ"
             )
-        )
+        ).map { it.copy(equipment = inferEquipmentForExercise(it.name)) }
     }
 }

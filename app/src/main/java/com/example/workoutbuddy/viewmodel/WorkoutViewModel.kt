@@ -109,6 +109,13 @@ class WorkoutViewModel(
     val allExercises = repository.getAllExercises().stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
     )
+    val exerciseUsageStats = MutableStateFlow<Map<Int, ExerciseUsageStat>>(emptyMap())
+
+    private fun refreshExerciseUsageStats() {
+        viewModelScope.launch {
+            exerciseUsageStats.value = repository.getExerciseUsageStats().associateBy { it.exerciseId }
+        }
+    }
     val selectedDate = MutableStateFlow<Long?>(null) // date timestamp
     val workoutsForSelectedDate = MutableStateFlow<List<WorkoutEntity>>(emptyList())
     val selectedWorkoutDetail = MutableStateFlow<WorkoutDetailState?>(null)
@@ -127,6 +134,7 @@ class WorkoutViewModel(
             repository.seedDatabaseIfEmpty()
             loadOrGenerateActiveWorkout()
         }
+        refreshExerciseUsageStats()
         
         // Listen for selected date changes to update history list
         viewModelScope.launch {
@@ -192,11 +200,23 @@ class WorkoutViewModel(
     }
 
     private suspend fun generateExercisesForWorkout(workoutId: Long, category: String) {
+        // Fetch user profile for adaptive weight recommendations, and to know what equipment
+        // is available so generation never picks an exercise the user has no way to do.
+        val profile = repository.getUserProfile()
+        val strengthScore = profile?.strengthScore ?: 100.0
+        val staminaScore = profile?.staminaScore ?: 100.0
+        val bodyWeight = profile?.weight ?: 75.0
+        val ownedEquipment = com.example.workoutbuddy.data.Equipment.parseCsv(
+            profile?.equipmentOwned ?: com.example.workoutbuddy.data.Equipment.allIdsCsv
+        )
+
         // Randomly select non-cardio exercises for this category every time (rather than
         // always reusing the exact same exercises as the last workout of this category),
         // capping how many can share the same bodyPart so the session stays varied
         // instead of e.g. 4 different chest presses in one PUSH day.
-        val categoryExercises = repository.getExercisesByCategory(category).filter { it.type != "CARDIO" }
+        val categoryExercises = repository.getExercisesByCategory(category)
+            .filter { it.type != "CARDIO" }
+            .filter { isExerciseAvailable(it, ownedEquipment) }
         val exerciseIdsToUse = selectDiverseRandomExercises(
             pool = categoryExercises,
             count = MAIN_EXERCISES_PER_WORKOUT,
@@ -205,16 +225,10 @@ class WorkoutViewModel(
 
         // Add a random cardio exercise to each workout at the end
         val allExs = repository.getAllExercises().filter { it.isNotEmpty() }.first()
-        val cardioExercises = allExs.filter { it.type == "CARDIO" }
+        val cardioExercises = allExs.filter { it.type == "CARDIO" && isExerciseAvailable(it, ownedEquipment) }
         if (cardioExercises.isNotEmpty()) {
             exerciseIdsToUse.add(cardioExercises.random().id)
         }
-
-        // Fetch user profile for adaptive weight recommendations
-        val profile = repository.getUserProfile()
-        val strengthScore = profile?.strengthScore ?: 100.0
-        val staminaScore = profile?.staminaScore ?: 100.0
-        val bodyWeight = profile?.weight ?: 75.0
 
         val setsToInsert = mutableListOf<WorkoutSetEntity>()
         for (exerciseId in exerciseIdsToUse) {
@@ -265,6 +279,13 @@ class WorkoutViewModel(
             }
         }
         repository.insertWorkoutSets(setsToInsert)
+    }
+
+    // An exercise with no equipment tags is bodyweight-only and always available; otherwise
+    // every tagged equipment must be in the user's owned set.
+    private fun isExerciseAvailable(exercise: ExerciseEntity, ownedEquipment: Set<com.example.workoutbuddy.data.Equipment>): Boolean {
+        val required = com.example.workoutbuddy.data.Equipment.parseCsv(exercise.equipment)
+        return required.isEmpty() || required.all { it in ownedEquipment }
     }
 
     /**
@@ -914,6 +935,7 @@ class WorkoutViewModel(
     }
 
     private fun triggerCooldown(exercise: ExerciseEntity) {
+        if (_userProfile.value?.restTimerEnabled == false) return
         val duration = when (exercise.impactLevel) {
             "HEAVY" -> 180 // 3 min
             "HIGH" -> 120 // 2 min
@@ -1013,6 +1035,22 @@ class WorkoutViewModel(
         }
     }
 
+    // Stops every workout-related timer (rest/cooldown, exercise countdown, and the overall
+    // workout duration ticker) so nothing keeps running in the background once a workout ends.
+    private fun stopAllWorkoutTimers() {
+        cooldownJob?.cancel()
+        cooldownRemaining.value = 0
+        cooldownExerciseName.value = null
+
+        countdownJob?.cancel()
+        isCountdownActive.value = false
+        countdownExerciseName.value = null
+        countdownSetId.value = null
+        isCountdownPaused.value = false
+
+        timerJob?.cancel()
+    }
+
     fun cancelCountdown() {
         countdownJob?.cancel()
         isCountdownActive.value = false
@@ -1064,6 +1102,7 @@ class WorkoutViewModel(
     // --- Completing Workout ---
 
     fun completeWorkout() {
+        stopAllWorkoutTimers()
         viewModelScope.launch {
             val workout = activeWorkout.value ?: return@launch
             val states = activeExerciseStates.value
@@ -1205,8 +1244,9 @@ class WorkoutViewModel(
             workoutDuration.value = 0L
             activeExerciseStates.value = emptyList()
             exerciseCompletionOrder.value = emptyMap()
-            
+
             loadOrGenerateActiveWorkout()
+            refreshExerciseUsageStats()
         }
     }
 
@@ -1917,9 +1957,42 @@ class WorkoutViewModel(
                 gender = gender,
                 strengthScore = newStrength,
                 staminaScore = newStamina,
-                gymExperience = currentProfile.gymExperience
+                gymExperience = currentProfile.gymExperience,
+                restTimerEnabled = currentProfile.restTimerEnabled
             )
             repository.saveUserProfile(updatedProfile)
+        }
+    }
+
+    fun setRestTimerEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            val currentProfile = repository.getUserProfile() ?: return@launch
+            val updatedProfile = currentProfile.copy(restTimerEnabled = enabled)
+            repository.saveUserProfile(updatedProfile)
+        }
+    }
+
+    fun setEquipmentOwned(equipment: com.example.workoutbuddy.data.Equipment, owned: Boolean) {
+        viewModelScope.launch {
+            val currentProfile = repository.getUserProfile() ?: return@launch
+            val current = com.example.workoutbuddy.data.Equipment.parseCsv(currentProfile.equipmentOwned).toMutableSet()
+            if (owned) current.add(equipment) else current.remove(equipment)
+            val updatedProfile = currentProfile.copy(equipmentOwned = current.joinToString(",") { it.id })
+            repository.saveUserProfile(updatedProfile)
+        }
+    }
+
+    fun setEquipmentOwnedSet(equipment: Set<com.example.workoutbuddy.data.Equipment>) {
+        viewModelScope.launch {
+            val currentProfile = repository.getUserProfile() ?: return@launch
+            repository.saveUserProfile(currentProfile.copy(equipmentOwned = equipment.joinToString(",") { it.id }))
+        }
+    }
+
+    fun setAllEquipmentOwned() {
+        viewModelScope.launch {
+            val currentProfile = repository.getUserProfile() ?: return@launch
+            repository.saveUserProfile(currentProfile.copy(equipmentOwned = com.example.workoutbuddy.data.Equipment.allIdsCsv))
         }
     }
 

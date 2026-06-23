@@ -2,6 +2,7 @@ package com.example.workoutbuddy.data.database
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.workoutbuddy.data.Equipment
 
 @Entity(tableName = "user_profile")
 data class UserProfileEntity(
@@ -13,5 +14,7 @@ data class UserProfileEntity(
     val gender: String, // "Male", "Female", "Other"
     val strengthScore: Double,
     val staminaScore: Double = 100.0,
-    val gymExperience: String = "Beginner"
+    val gymExperience: String = "Beginner",
+    val restTimerEnabled: Boolean = true,
+    val equipmentOwned: String = Equipment.allIdsCsv // CSV of Equipment ids the user has access to
 )
