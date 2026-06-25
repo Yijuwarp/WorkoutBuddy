@@ -274,7 +274,7 @@ fun WorkoutQuickStats(
                     QuickStatItem(
                         label = "+${String.format("%.1f", strengthGain)}",
                         subtext = "Strength",
-                        labelColor = Color(0xFFEF4444)
+                        labelColor = RedDangerLight
                     )
                 }
                 if (staminaGain > 0.0) {
@@ -282,7 +282,7 @@ fun WorkoutQuickStats(
                     QuickStatItem(
                         label = "+${String.format("%.1f", staminaGain)}",
                         subtext = "Stamina",
-                        labelColor = Color(0xFFF59E0B)
+                        labelColor = AmberWarning
                     )
                 }
             }
@@ -307,7 +307,7 @@ fun WorkoutDetailDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.85f),
-            shape = RoundedCornerShape(20.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         ) {
@@ -358,8 +358,8 @@ fun WorkoutDetailDialog(
                             prCount = detail.workout.prCount,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(LightBackground, RoundedCornerShape(12.dp))
-                                .border(1.dp, BorderLight, RoundedCornerShape(12.dp))
+                                .background(LightBackground, MaterialTheme.shapes.medium)
+                                .border(1.dp, BorderLight, MaterialTheme.shapes.medium)
                                 .padding(12.dp)
                         )
                     }
@@ -377,8 +377,8 @@ fun WorkoutDetailDialog(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(LightBackground, RoundedCornerShape(12.dp))
-                                    .border(1.dp, BorderLight, RoundedCornerShape(12.dp))
+                                    .background(LightBackground, MaterialTheme.shapes.medium)
+                                    .border(1.dp, BorderLight, MaterialTheme.shapes.medium)
                                     .padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
@@ -522,7 +522,7 @@ fun WorkoutDetailDialog(
                     onClick = onDelete,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,

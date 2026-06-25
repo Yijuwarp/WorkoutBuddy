@@ -27,6 +27,7 @@ fun WorkoutBuddyTheme(
     MaterialTheme(
         colorScheme = LightColorScheme,
         typography = Typography,
+        shapes = Shapes,
         content = content
     )
 }

@@ -73,9 +73,9 @@ fun OnboardingScreen(
 
     val gradientBg = Brush.verticalGradient(
         colors = listOf(
-            Color(0xFF0F172A), // Slate 900
-            Color(0xFF1E293B), // Slate 800
-            Color(0xFF0F172A)  // Slate 900
+            TextDark, // Slate 900
+            SlateDarker, // Slate 800
+            TextDark  // Slate 900
         )
     )
 
@@ -127,8 +127,8 @@ fun OnboardingScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(24.dp)),
-                shape = RoundedCornerShape(24.dp),
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), ShapeHero),
+                shape = ShapeHero,
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
             ) {
                 Column(
@@ -225,7 +225,7 @@ fun OnboardingScreen(
                                 onClick = { step-- },
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = MaterialTheme.shapes.medium,
                                 modifier = Modifier.height(48.dp)
                             ) {
                                 Text("Back", fontWeight = FontWeight.Bold)
@@ -248,7 +248,7 @@ fun OnboardingScreen(
                                     containerColor = BluePrimary,
                                     disabledContainerColor = Color.White.copy(alpha = 0.1f)
                                 ),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = MaterialTheme.shapes.medium,
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(start = 12.dp)
@@ -287,7 +287,7 @@ fun OnboardingEquipmentStep(
 
         Card(
             modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
         ) {
             com.example.workoutbuddy.ui.components.EquipmentPickerColumn(
@@ -422,8 +422,8 @@ fun OnboardingGymExperienceStep(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
-            shape = RoundedCornerShape(16.dp),
+                .border(1.dp, Color.White.copy(alpha = 0.1f), MaterialTheme.shapes.large),
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.03f))
         ) {
             Column(
@@ -493,7 +493,7 @@ fun OnboardingStep1(
                 unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
                 cursorColor = BluePrimary
             ),
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
@@ -539,7 +539,7 @@ fun OnboardingGenderStep(
                     modifier = Modifier
                         .weight(1f)
                         .clickable { onGenderSelect(option) },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = MaterialTheme.shapes.large,
                     border = border,
                     colors = CardDefaults.cardColors(containerColor = bg)
                 ) {
@@ -839,8 +839,8 @@ fun OnboardingStep5(
             Box(
                 modifier = Modifier
                     .size(110.dp)
-                    .border(2.dp, Color(0xFFF59E0B).copy(alpha = 0.5f), CircleShape)
-                    .background(Color(0xFFF59E0B).copy(alpha = 0.15f), CircleShape),
+                    .border(2.dp, AmberWarning.copy(alpha = 0.5f), CircleShape)
+                    .background(AmberWarning.copy(alpha = 0.15f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -855,7 +855,7 @@ fun OnboardingStep5(
                         text = "STAMINA",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFF59E0B),
+                        color = AmberWarning,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -877,7 +877,7 @@ fun OnboardingStep5(
         Button(
             onClick = onComplete,
             colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp)

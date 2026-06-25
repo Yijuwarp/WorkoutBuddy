@@ -325,13 +325,13 @@ fun ExerciseThumbnail(
                 painter = painterResource(id = animatedResId),
                 contentDescription = "$exerciseName thumbnail",
                 modifier = modifier
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(MaterialTheme.shapes.extraSmall),
                 contentScale = ContentScale.Crop
             )
         } else {
             Box(
                 modifier = modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(LightBlueContainer),
                 contentAlignment = Alignment.Center
             ) {
@@ -574,7 +574,7 @@ fun ExerciseDetailBottomSheet(
                     // How-To button
                     OutlinedButton(
                         onClick = { showHowToSheet = true },
-                        shape = RoundedCornerShape(8.dp),
+                        shape = MaterialTheme.shapes.extraSmall,
                         border = BorderStroke(1.dp, BluePrimary),
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
                         modifier = Modifier.height(32.dp)
@@ -640,7 +640,7 @@ fun ExerciseDetailBottomSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(MaterialTheme.shapes.extraSmall)
                     .background(LightBlueContainer)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -791,7 +791,7 @@ fun ExerciseDetailBottomSheet(
                         onClick = onDismissRequest,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text("Done", fontWeight = FontWeight.Bold, color = Color.White)
                     }
@@ -812,8 +812,8 @@ fun ExerciseDetailBottomSheet(
                                 }
                             },
                             modifier = Modifier.weight(1f).height(48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF374151)),
-                            shape = RoundedCornerShape(12.dp)
+                            colors = ButtonDefaults.buttonColors(containerColor = SlateButton),
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Log All Sets", fontWeight = FontWeight.Bold, color = Color.White)
                         }
@@ -835,8 +835,8 @@ fun ExerciseDetailBottomSheet(
                                 }
                             },
                             modifier = Modifier.weight(1.2f).height(48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF43F5E)),
-                            shape = RoundedCornerShape(12.dp)
+                            colors = ButtonDefaults.buttonColors(containerColor = RoseAccent),
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             val text = if (hasTimer) "Start Timer" else "Log Set"
                             Text(text, fontWeight = FontWeight.Bold, color = Color.White)
@@ -853,7 +853,7 @@ fun ExerciseDetailBottomSheet(
                     Text(
                         text = "Start the workout to log your sets",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFFF43F5E),
+                        color = RoseAccent,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                     )
@@ -866,7 +866,7 @@ fun ExerciseDetailBottomSheet(
                             .padding(horizontal = 16.dp)
                             .height(56.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text("Start Workout", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
                     }
@@ -971,7 +971,7 @@ fun ExerciseHowToSheet(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = LightBlueContainer),
-                shape = RoundedCornerShape(10.dp)
+                shape = MaterialTheme.shapes.small
             ) {
                 Text(
                     text = exercise.description,
@@ -1037,8 +1037,8 @@ fun ExerciseHowToSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0000)),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = YoutubeRed),
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
@@ -1605,7 +1605,7 @@ fun CountdownTimerDialog(
                 .width(320.dp)
                 .scale(0.85f + 0.15f * entrance.value)
                 .alpha(entrance.value),
-            shape = RoundedCornerShape(20.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         ) {
@@ -1686,7 +1686,7 @@ fun CountdownTimerDialog(
                     OutlinedButton(
                         onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onMinimize() },
                         modifier = Modifier.weight(1.2f),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.medium,
                         contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
                         Text("Minimize", fontSize = 13.sp)
@@ -1696,7 +1696,7 @@ fun CountdownTimerDialog(
                         onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onDone() },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.medium,
                         contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
                         Text("Done", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -1742,7 +1742,7 @@ fun RestTimerModal(
                     .alpha(entrance.value)
                     .scale(0.9f + 0.1f * entrance.value)
                     .clickable(enabled = false) { /* stop propagation */ },
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
@@ -1787,7 +1787,7 @@ fun RestTimerModal(
                         OutlinedButton(
                             onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onDismissRequest() },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Minimize")
                         }
@@ -1795,7 +1795,7 @@ fun RestTimerModal(
                             onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onSkip() },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Skip", color = Color.White)
                         }
@@ -1935,7 +1935,7 @@ fun CountdownBanner(
             Button(
                 onClick = { soundPlayer.play(AppSound.BUTTON_TAP); onDone() },
                 colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
-                shape = RoundedCornerShape(8.dp),
+                shape = MaterialTheme.shapes.extraSmall,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                 modifier = Modifier.height(32.dp)
             ) {
@@ -2210,7 +2210,7 @@ fun ExercisePickerDialog(
                             },
                             enabled = newName.isNotBlank() && selectedBodyParts.isNotEmpty(),
                             colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Create & Add", color = Color.White, fontWeight = FontWeight.Bold)
                         }
@@ -2253,8 +2253,8 @@ fun ExercisePickerDialog(
                                 IconButton(
                                     onClick = { showSortFilterMenu = true },
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .border(1.dp, BorderLight, RoundedCornerShape(12.dp))
+                                        .clip(MaterialTheme.shapes.medium)
+                                        .border(1.dp, BorderLight, MaterialTheme.shapes.medium)
                                 ) {
                                     Icon(Icons.Default.FilterList, contentDescription = "Sort and filter", tint = BluePrimary)
                                 }
@@ -2319,7 +2319,7 @@ fun ExercisePickerDialog(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(MaterialTheme.shapes.extraSmall)
                                         .clickable { onExerciseSelected(exercise) }
                                         .padding(12.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -2375,7 +2375,7 @@ fun ExercisePickerDialog(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { selectedMuscleGroup = muscle },
-                                        shape = RoundedCornerShape(10.dp),
+                                        shape = MaterialTheme.shapes.small,
                                         colors = CardDefaults.cardColors(containerColor = LightBlueContainer.copy(alpha = 0.5f))
                                     ) {
                                         Row(
@@ -2425,8 +2425,8 @@ fun ExercisePickerDialog(
                                     IconButton(
                                         onClick = { showSortFilterMenu = true },
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .border(1.dp, BorderLight, RoundedCornerShape(12.dp))
+                                            .clip(MaterialTheme.shapes.medium)
+                                            .border(1.dp, BorderLight, MaterialTheme.shapes.medium)
                                     ) {
                                         Icon(Icons.Default.FilterList, contentDescription = "Sort and filter", tint = BluePrimary)
                                     }
@@ -2491,7 +2491,7 @@ fun ExercisePickerDialog(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .clip(MaterialTheme.shapes.extraSmall)
                                             .clickable { onExerciseSelected(exercise) }
                                             .padding(12.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -2597,7 +2597,7 @@ fun BodyPartPickerDialog(
                     .navigationBarsPadding()
                     .padding(16.dp)
                     .clickable(enabled = false) { /* stop propagation */ },
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
@@ -2636,7 +2636,7 @@ fun BodyPartPickerDialog(
                                             tempSelected + part
                                         }
                                     },
-                                shape = RoundedCornerShape(12.dp),
+                                shape = MaterialTheme.shapes.medium,
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (isSelected) LightBlueContainer else Color.Transparent
                                 ),
@@ -2681,7 +2681,7 @@ fun BodyPartPickerDialog(
                             .fillMaxWidth()
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text("Apply", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }

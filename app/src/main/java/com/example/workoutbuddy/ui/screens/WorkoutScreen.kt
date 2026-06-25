@@ -170,7 +170,7 @@ fun WorkoutScreen(
                 // Workout Ticker Timer Box
                 val isPaused by viewModel.isTimerPaused.collectAsState()
                 val timerBgColor = if (isStarted) {
-                    if (isPaused) Color(0xFFFEF3C7) else LightBlueContainer
+                    if (isPaused) AmberWarningBgStrong else LightBlueContainer
                 } else {
                     BorderLight.copy(alpha = 0.5f)
                 }
@@ -183,7 +183,7 @@ fun WorkoutScreen(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .background(timerBgColor)
                         .clickable(enabled = isStarted) {
                             viewModel.toggleWorkoutTimer()
@@ -220,7 +220,7 @@ fun WorkoutScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = MaterialTheme.shapes.large,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                         ) {
@@ -320,7 +320,7 @@ fun WorkoutScreen(
                                 containerColor = LightBlueContainer,
                                 contentColor = BluePrimary
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = MaterialTheme.shapes.medium,
                             border = BorderStroke(1.5.dp, BluePrimary.copy(alpha = 0.2f))
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, tint = BluePrimary)
@@ -390,7 +390,7 @@ fun WorkoutScreen(
                     .height(56.dp)
                     .pressScale(startInteractionSource),
                 colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.medium,
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
@@ -416,7 +416,7 @@ fun WorkoutScreen(
                     .height(56.dp)
                     .pressScale(completeInteractionSource),
                 colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.medium,
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
                 Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
@@ -524,7 +524,7 @@ fun WorkoutScreen(
                         .padding(16.dp)
                         .scale(0.8f + 0.2f * cardEntrance.value)
                         .alpha(cardEntrance.value),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = MaterialTheme.shapes.extraLarge,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.5.dp, GoldPR),
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -539,7 +539,7 @@ fun WorkoutScreen(
                                 .size(80.dp)
                                 .scale(0.3f + 0.7f * trophyBounce.value)
                                 .clip(CircleShape)
-                                .background(Color(0xFFFFFBEB))
+                                .background(AmberWarningBgLight)
                                 .border(2.dp, GoldPR, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
@@ -575,7 +575,7 @@ fun WorkoutScreen(
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = LightBlueContainer),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = MaterialTheme.shapes.medium,
                             border = BorderStroke(1.5.dp, BorderLight)
                         ) {
                             Row(
@@ -614,7 +614,7 @@ fun WorkoutScreen(
                                 .fillMaxWidth()
                                 .height(48.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = GoldPR),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Awesome!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
@@ -741,7 +741,7 @@ fun WorkoutSummaryDialog(
                 .padding(16.dp)
                 .scale(0.85f + 0.15f * entrance.value)
                 .alpha(entrance.value),
-            shape = RoundedCornerShape(20.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         ) {
@@ -884,7 +884,7 @@ fun WorkoutSummaryDialog(
                 // Duration Text (Clickable to Edit)
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(MaterialTheme.shapes.extraSmall)
                         .clickable { showEditDurationDialog = true }
                         .background(LightBlueContainer)
                         .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -910,7 +910,7 @@ fun WorkoutSummaryDialog(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Text("Done", fontWeight = FontWeight.Bold)
                 }
@@ -925,7 +925,7 @@ fun WorkoutSummaryDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
@@ -965,7 +965,7 @@ fun WorkoutSummaryDialog(
                             },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Save", fontWeight = FontWeight.Bold)
                         }

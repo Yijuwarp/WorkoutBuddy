@@ -27,7 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.workoutbuddy.data.Equipment
 import com.example.workoutbuddy.theme.BluePrimary
+import com.example.workoutbuddy.theme.SlateBorder
 import com.example.workoutbuddy.theme.TextDark
+import com.example.workoutbuddy.theme.TextMuted
 import androidx.compose.foundation.Image
 
 // Shared equipment row list (icon, name, toggle) reused by Profile > Settings and the
@@ -92,7 +94,7 @@ private fun EquipmentRow(
             contentDescription = equipment.displayName,
             modifier = Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(Color.White)
                 .padding(4.dp),
             contentScale = ContentScale.Fit
@@ -110,8 +112,8 @@ private fun EquipmentRow(
             colors = SwitchDefaults.colors(
                 checkedTrackColor = BluePrimary,
                 uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = Color(0xFF475569).copy(alpha = 0.5f),
-                uncheckedBorderColor = Color(0xFF94A3B8)
+                uncheckedTrackColor = TextMuted.copy(alpha = 0.5f),
+                uncheckedBorderColor = SlateBorder
             )
         )
     }

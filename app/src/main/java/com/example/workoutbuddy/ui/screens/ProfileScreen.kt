@@ -83,7 +83,7 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 24.dp),
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
@@ -135,14 +135,14 @@ fun ProfileScreen(
                                 modifier = Modifier
                                     .size(60.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFFEE2E2)),
+                                    .background(RedDangerBg),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "${p.strengthScore.toInt()}",
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Black,
-                                    color = Color(0xFFEF4444),
+                                    color = RedDangerLight,
                                     lineHeight = 24.sp
                                 )
                             }
@@ -164,14 +164,14 @@ fun ProfileScreen(
                                 modifier = Modifier
                                     .size(60.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFFFFBEB)),
+                                    .background(AmberWarningBgLight),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "${p.staminaScore.toInt()}",
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Black,
-                                    color = Color(0xFFF59E0B),
+                                    color = AmberWarning,
                                     lineHeight = 24.sp
                                 )
                             }
@@ -198,7 +198,7 @@ fun ProfileScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
@@ -209,7 +209,7 @@ fun ProfileScreen(
                         value = nickname,
                         onValueChange = { nickname = it },
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = BluePrimary,
@@ -233,7 +233,7 @@ fun ProfileScreen(
                                     .weight(1f)
                                     .height(50.dp)
                                     .clickable { gender = option },
-                                shape = RoundedCornerShape(12.dp),
+                                shape = MaterialTheme.shapes.medium,
                                 border = border,
                                 colors = CardDefaults.cardColors(containerColor = bg)
                             ) {
@@ -262,7 +262,7 @@ fun ProfileScreen(
                                 onValueChange = { ageText = it },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = MaterialTheme.shapes.medium,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = BluePrimary,
                                     unfocusedBorderColor = BorderLight
@@ -278,7 +278,7 @@ fun ProfileScreen(
                                 onValueChange = { heightText = it },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = MaterialTheme.shapes.medium,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = BluePrimary,
                                     unfocusedBorderColor = BorderLight
@@ -294,7 +294,7 @@ fun ProfileScreen(
                                 onValueChange = { weightText = it },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = MaterialTheme.shapes.medium,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = BluePrimary,
                                     unfocusedBorderColor = BorderLight
@@ -331,7 +331,7 @@ fun ProfileScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -350,7 +350,7 @@ fun ProfileScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
             ) {
@@ -376,8 +376,8 @@ fun ProfileScreen(
                         colors = SwitchDefaults.colors(
                             checkedTrackColor = BluePrimary,
                             uncheckedThumbColor = Color.White,
-                            uncheckedTrackColor = Color(0xFF475569).copy(alpha = 0.5f),
-                            uncheckedBorderColor = Color(0xFF94A3B8)
+                            uncheckedTrackColor = TextMuted.copy(alpha = 0.5f),
+                            uncheckedBorderColor = SlateBorder
                         )
                     )
                 }
@@ -423,7 +423,7 @@ fun ProfileScreen(
         Dialog(onDismissRequest = { showEquipmentDialog = false }) {
             Card(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
@@ -455,7 +455,7 @@ fun ProfileScreen(
                         onClick = { showEquipmentDialog = false },
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
                     }
