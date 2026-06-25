@@ -384,8 +384,10 @@ fun ExerciseListItem(
             .fillMaxWidth()
             .pressScale(cardInteractionSource)
             .clickable(interactionSource = cardInteractionSource, indication = LocalIndication.current) { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+        colors = CardDefaults.cardColors(
+            containerColor = if (isCompleted) LightBlueContainer else MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(1.dp, if (isCompleted) BluePrimary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outline)
     ) {
         Row(
             modifier = Modifier
