@@ -1036,7 +1036,7 @@ fun ExerciseHowToSheet(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
+                        .height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = YoutubeRed),
                     shape = MaterialTheme.shapes.medium
                 ) {
