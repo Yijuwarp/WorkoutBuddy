@@ -182,56 +182,13 @@ fun CompletedWorkoutItem(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Quick statistics
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start
-            ) {
-                QuickStatItem(label = "${workout.totalCalories.toInt()} kcal", subtext = "Burned")
-                Spacer(modifier = Modifier.width(24.dp))
-                if (workout.totalSteps > 0) {
-                    QuickStatItem(label = "${workout.totalSteps}", subtext = "Steps")
-                    Spacer(modifier = Modifier.width(24.dp))
-                }
-                if (workout.strengthGain > 0.0) {
-                    QuickStatItem(
-                        label = "+${String.format("%.1f", workout.strengthGain)}",
-                        subtext = "Strength",
-                        labelColor = Color(0xFFEF4444)
-                    )
-                    Spacer(modifier = Modifier.width(24.dp))
-                }
-                if (workout.staminaGain > 0.0) {
-                    QuickStatItem(
-                        label = "+${String.format("%.1f", workout.staminaGain)}",
-                        subtext = "Stamina",
-                        labelColor = Color(0xFFF59E0B)
-                    )
-                    Spacer(modifier = Modifier.width(24.dp))
-                }
-                if (workout.prCount > 0) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                tint = GoldPR,
-                                modifier = Modifier.size(14.dp).padding(end = 2.dp)
-                            )
-                            Text(
-                                text = "${workout.prCount}",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = GoldPR
-                            )
-                        }
-                        Text(
-                            text = "Records",
-                            fontSize = 10.sp,
-                            color = TextMuted
-                        )
-                    }
-                }
-            }
+            WorkoutQuickStats(
+                calories = workout.totalCalories.toInt(),
+                steps = workout.totalSteps,
+                strengthGain = workout.strengthGain,
+                staminaGain = workout.staminaGain,
+                prCount = workout.prCount
+            )
         }
     }
 }
@@ -254,6 +211,82 @@ fun QuickStatItem(
             fontSize = 10.sp,
             color = TextMuted
         )
+    }
+}
+
+// Calories/Steps/Records always anchor row 1 (Records in slot 3); Strength/Stamina spill onto
+// a second row since a 5-item Row with Arrangement.Start has no wrapping and squeezes whichever
+// item runs out of width — that's what was crushing the "Records" column down to one letter per line.
+@Composable
+fun WorkoutQuickStats(
+    calories: Int,
+    steps: Int,
+    strengthGain: Double,
+    staminaGain: Double,
+    prCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            QuickStatItem(label = "$calories kcal", subtext = "Burned")
+            if (steps > 0) {
+                Spacer(modifier = Modifier.width(24.dp))
+                QuickStatItem(label = "$steps", subtext = "Steps")
+            }
+            if (prCount > 0) {
+                Spacer(modifier = Modifier.width(24.dp))
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = GoldPR,
+                            modifier = Modifier.size(14.dp).padding(end = 2.dp)
+                        )
+                        Text(
+                            text = "$prCount",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldPR
+                        )
+                    }
+                    Text(
+                        text = "Records",
+                        fontSize = 10.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+        }
+
+        if (strengthGain > 0.0 || staminaGain > 0.0) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (strengthGain > 0.0) {
+                    QuickStatItem(
+                        label = "+${String.format("%.1f", strengthGain)}",
+                        subtext = "Strength",
+                        labelColor = Color(0xFFEF4444)
+                    )
+                }
+                if (staminaGain > 0.0) {
+                    if (strengthGain > 0.0) Spacer(modifier = Modifier.width(24.dp))
+                    QuickStatItem(
+                        label = "+${String.format("%.1f", staminaGain)}",
+                        subtext = "Stamina",
+                        labelColor = Color(0xFFF59E0B)
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -317,61 +350,18 @@ fun WorkoutDetailDialog(
                 ) {
                     // Quick statistics at the very top
                     item {
-                        Row(
+                        WorkoutQuickStats(
+                            calories = detail.workout.totalCalories.toInt(),
+                            steps = detail.workout.totalSteps,
+                            strengthGain = detail.workout.strengthGain,
+                            staminaGain = detail.workout.staminaGain,
+                            prCount = detail.workout.prCount,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(LightBackground, RoundedCornerShape(12.dp))
                                 .border(1.dp, BorderLight, RoundedCornerShape(12.dp))
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            QuickStatItem(label = "${detail.workout.totalCalories.toInt()} kcal", subtext = "Burned")
-                            Spacer(modifier = Modifier.width(24.dp))
-                            if (detail.workout.totalSteps > 0) {
-                                QuickStatItem(label = "${detail.workout.totalSteps}", subtext = "Steps")
-                                Spacer(modifier = Modifier.width(24.dp))
-                            }
-                            if (detail.workout.strengthGain > 0.0) {
-                                QuickStatItem(
-                                    label = "+${String.format("%.1f", detail.workout.strengthGain)}",
-                                    subtext = "Strength",
-                                    labelColor = Color(0xFFEF4444)
-                                )
-                                Spacer(modifier = Modifier.width(24.dp))
-                            }
-                            if (detail.workout.staminaGain > 0.0) {
-                                QuickStatItem(
-                                    label = "+${String.format("%.1f", detail.workout.staminaGain)}",
-                                    subtext = "Stamina",
-                                    labelColor = Color(0xFFF59E0B)
-                                )
-                                Spacer(modifier = Modifier.width(24.dp))
-                            }
-                            if (detail.workout.prCount > 0) {
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.Star,
-                                            contentDescription = null,
-                                            tint = GoldPR,
-                                            modifier = Modifier.size(14.dp).padding(end = 2.dp)
-                                        )
-                                        Text(
-                                            text = "${detail.workout.prCount}",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = GoldPR
-                                        )
-                                    }
-                                    Text(
-                                        text = "Records",
-                                        fontSize = 10.sp,
-                                        color = TextMuted
-                                    )
-                                }
-                            }
-                        }
+                                .padding(12.dp)
+                        )
                     }
 
                     // Muscle Impacts section

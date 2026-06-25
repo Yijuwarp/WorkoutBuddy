@@ -107,7 +107,12 @@ private fun EquipmentRow(
         Switch(
             checked = isOwned,
             onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(checkedTrackColor = BluePrimary)
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = BluePrimary,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = Color(0xFF475569).copy(alpha = 0.5f),
+                uncheckedBorderColor = Color(0xFF94A3B8)
+            )
         )
     }
 }

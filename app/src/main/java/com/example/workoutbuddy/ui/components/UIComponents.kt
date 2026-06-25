@@ -482,6 +482,12 @@ fun ExerciseDetailBottomSheet(
     isRestTimerExpanded: Boolean,
     onSkipCooldown: () -> Unit,
     onShowRestTimer: () -> Unit,
+    countdownExerciseName: String? = null,
+    countdownRemaining: Int = 0,
+    countdownDuration: Int = 0,
+    isCountdownExpanded: Boolean = true,
+    onShowCountdownTimer: () -> Unit = {},
+    onCompleteCountdownEarly: () -> Unit = {},
     onDismissRequest: () -> Unit,
     onSetValuesChanged: (Long, Double?, Int?, Int?, Double?, Double?) -> Unit,
     onSetCompleteToggled: (Long, Boolean, Double?, Int?, Int?, Double?, Double?) -> Unit,
@@ -495,6 +501,24 @@ fun ExerciseDetailBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showHowToSheet by remember { mutableStateOf(false) }
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+
+    // If the user is mid-typing in a set's input (e.g. queuing up the next set's weight while
+    // resting) when a timer completes elsewhere, a still-focused field can cause the keyboard
+    // to pop back open on the resulting recomposition. Defocus/hide whenever either timer
+    // transitions to "finished" so that can't happen, not just when a button is tapped.
+    LaunchedEffect(cooldownExerciseName) {
+        if (cooldownExerciseName == null) {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
+    }
+    LaunchedEffect(countdownExerciseName) {
+        if (countdownExerciseName == null) {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -723,7 +747,8 @@ fun ExerciseDetailBottomSheet(
                             },
                             onCompleteToggled = { complete, w, r, t, d, inc ->
                                  if (complete) {
-                                     keyboardController?.hide()
+                                     focusManager.clearFocus(force = true)
+                                keyboardController?.hide()
                                  }
                                  onSetCompleteToggled(set.id, complete, w, r, t, d, inc)
                             }
@@ -778,6 +803,7 @@ fun ExerciseDetailBottomSheet(
                         // Log All Sets button
                         Button(
                             onClick = {
+                                focusManager.clearFocus(force = true)
                                 keyboardController?.hide()
                                 exerciseState.sets.forEach { set ->
                                     if (!set.isCompleted) {
@@ -797,6 +823,7 @@ fun ExerciseDetailBottomSheet(
                         val hasTimer = exerciseState.exercise.type == "CARDIO" || exerciseState.exercise.type == "HOLD"
                         Button(
                             onClick = {
+                                focusManager.clearFocus(force = true)
                                 keyboardController?.hide()
                                 if (nextSet != null) {
                                     if (hasTimer) {
@@ -847,20 +874,35 @@ fun ExerciseDetailBottomSheet(
             }
         }
 
-        // Float Cooldown Timer Banner (minimized state), mirrors the main workout screen
-        if (cooldownExerciseName != null && !isRestTimerExpanded) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 8.dp)
-                    .clickable { onShowRestTimer() }
-            ) {
-                CooldownBanner(
-                    exerciseName = cooldownExerciseName,
-                    remainingSeconds = cooldownRemaining,
-                    totalDuration = cooldownDuration,
-                    onSkip = onSkipCooldown
-                )
+        // Float Cooldown/Countdown Timer Banners (minimized state), mirrors the main workout
+        // screen - previously only the rest-timer (cooldown) banner was wired up here, so the
+        // exercise/cardio countdown timer would silently keep running with no minimized
+        // indicator while the user was on this screen.
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (countdownExerciseName != null && !isCountdownExpanded) {
+                Box(modifier = Modifier.clickable { onShowCountdownTimer() }) {
+                    CountdownBanner(
+                        exerciseName = countdownExerciseName,
+                        remainingSeconds = countdownRemaining,
+                        totalDuration = countdownDuration,
+                        onDone = onCompleteCountdownEarly
+                    )
+                }
+            }
+            if (cooldownExerciseName != null && !isRestTimerExpanded) {
+                Box(modifier = Modifier.clickable { onShowRestTimer() }) {
+                    CooldownBanner(
+                        exerciseName = cooldownExerciseName,
+                        remainingSeconds = cooldownRemaining,
+                        totalDuration = cooldownDuration,
+                        onSkip = onSkipCooldown
+                    )
+                }
             }
         }
       }
@@ -2303,6 +2345,12 @@ fun ExercisePickerDialog(
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = TextBlue
                                             )
+                                            val logCount = usageStats[exercise.id]?.logCount ?: 0
+                                            Text(
+                                                text = if (logCount > 0) "Logged ${logCount}x" else "Not logged yet",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = TextMuted
+                                            )
                                         }
                                     }
                                     Icon(
@@ -2360,15 +2408,81 @@ fun ExercisePickerDialog(
                                 )
                             }
  
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
+                            Row(
                                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                placeholder = { Text("Search in $selectedMuscleGroup...") },
-                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                                singleLine = true
-                            )
- 
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    modifier = Modifier.weight(1f),
+                                    placeholder = { Text("Search in $selectedMuscleGroup...") },
+                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                    singleLine = true
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box {
+                                    IconButton(
+                                        onClick = { showSortFilterMenu = true },
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .border(1.dp, BorderLight, RoundedCornerShape(12.dp))
+                                    ) {
+                                        Icon(Icons.Default.FilterList, contentDescription = "Sort and filter", tint = BluePrimary)
+                                    }
+                                    DropdownMenu(
+                                        expanded = showSortFilterMenu,
+                                        onDismissRequest = { showSortFilterMenu = false }
+                                    ) {
+                                        Text(
+                                            "Sort by",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = TextMuted,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                        )
+                                        ExerciseSortMode.entries.forEach { mode ->
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        if (sortMode == mode) {
+                                                            Icon(Icons.Default.Check, contentDescription = null, tint = BluePrimary, modifier = Modifier.size(18.dp))
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                        } else {
+                                                            Spacer(modifier = Modifier.width(26.dp))
+                                                        }
+                                                        Text(mode.label)
+                                                    }
+                                                },
+                                                onClick = { sortMode = mode }
+                                            )
+                                        }
+                                        HorizontalDivider(color = BorderLight.copy(alpha = 0.5f))
+                                        Text(
+                                            "Equipment",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = TextMuted,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                        )
+                                        EquipmentFilterMode.entries.forEach { mode ->
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        if (equipmentFilter == mode) {
+                                                            Icon(Icons.Default.Check, contentDescription = null, tint = BluePrimary, modifier = Modifier.size(18.dp))
+                                                            Spacer(modifier = Modifier.width(8.dp))
+                                                        } else {
+                                                            Spacer(modifier = Modifier.width(26.dp))
+                                                        }
+                                                        Text(mode.label)
+                                                    }
+                                                },
+                                                onClick = { equipmentFilter = mode }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
                             LazyColumn(
                                 modifier = Modifier.weight(1f).fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -2402,6 +2516,12 @@ fun ExercisePickerDialog(
                                                     text = "${exercise.bodyPart} • ${exercise.type}",
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     color = TextBlue
+                                                )
+                                                val logCount = usageStats[exercise.id]?.logCount ?: 0
+                                                Text(
+                                                    text = if (logCount > 0) "Logged ${logCount}x" else "Not logged yet",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = TextMuted
                                                 )
                                             }
                                         }

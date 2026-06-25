@@ -6,10 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.app.Application
-import android.media.RingtoneManager
-import android.media.AudioManager
-import android.media.ToneGenerator
-import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.workoutbuddy.R
@@ -1063,35 +1059,7 @@ class WorkoutViewModel(
 
     private fun playBeep(isRestTimer: Boolean) {
         Haptics.success(getApplication())
-        viewModelScope.launch(Dispatchers.Default) {
-            try {
-                val toneGen = ToneGenerator(AudioManager.STREAM_MUSIC, 100) // 100 is Max Volume
-                if (isRestTimer) {
-                    // Rest complete: cheerful rising "ta-da" (lower register)
-                    toneGen.startTone(ToneGenerator.TONE_DTMF_1, 250)
-                    delay(300) // 250ms play + 50ms gap
-                    toneGen.startTone(ToneGenerator.TONE_DTMF_5, 600)
-                } else {
-                    // Exercise complete: cheerful rising "ta-da" (higher/brighter register)
-                    toneGen.startTone(ToneGenerator.TONE_DTMF_5, 250)
-                    delay(300) // 250ms play + 50ms gap
-                    toneGen.startTone(ToneGenerator.TONE_DTMF_9, 600)
-                }
-                delay(700) // wait for second tone to complete
-                toneGen.release()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // Fallback to system notification sound
-                try {
-                    val context = getApplication<Application>().applicationContext
-                    val notification: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                    val r = RingtoneManager.getRingtone(context, notification)
-                    r.play()
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                }
-            }
-        }
+        soundPlayer.play(if (isRestTimer) AppSound.REST_TIMER_END else AppSound.TIMER_END)
     }
 
     override fun onCleared() {
@@ -1651,21 +1619,19 @@ class WorkoutViewModel(
         }
     }
 
-    // Returns the fixed "old record" to display in the celebration popup for this exercise's
-    // session: the first time this is called for a given workout+exercise, it locks in
-    // freshOldRecord as the baseline; subsequent calls (from later PRs in the same session)
-    // keep returning that same baseline instead of the just-superseded intermediate PR.
-    private fun celebrationOldRecord(workoutId: Long, exerciseId: Int, freshOldRecord: String): String {
+    // Single funnel for every "record broken" celebration regardless of exercise type. Only
+    // shows the popup once per workout+exercise: if set 2 and set 3 both beat the historical
+    // PR again, later calls just ratchet the celebrationBaselineForExercise entry's implicit
+    // "already celebrated" status without re-popping the dialog or re-playing the chime
+    // (sound/haptics are triggered from the UI when the dialog actually becomes visible, not
+    // here, since the dialog itself is deferred until the user leaves the exercise screen).
+    private fun celebrateRecordBroken(workoutId: Long, exerciseId: Int, exerciseName: String, freshOldRecord: String, newRecord: String) {
         val key = "$workoutId:$exerciseId"
-        return celebrationBaselineForExercise.getOrPut(key) { freshOldRecord }
-    }
-
-    // Single funnel for every "record broken" celebration regardless of exercise type, so the
-    // chime + haptic always accompany the popup and can't be missed at one of the four call sites.
-    private fun celebrateRecordBroken(state: RecordBrokenState) {
-        recordBrokenCelebration.value = state
-        soundPlayer.play(AppSound.CHIME)
-        Haptics.celebrate(getApplication())
+        val alreadyCelebrated = key in celebrationBaselineForExercise
+        val oldRecord = celebrationBaselineForExercise.getOrPut(key) { freshOldRecord }
+        if (!alreadyCelebrated) {
+            recordBrokenCelebration.value = RecordBrokenState(exerciseName, oldRecord, newRecord)
+        }
     }
 
     private suspend fun reevaluatePRsForExercise(workoutId: Long, exerciseId: Int) {
@@ -1695,9 +1661,8 @@ class WorkoutViewModel(
                 )
                 if (isBrokenRecord && currentBestSet != null && pastBestSet != null) {
                     val freshOldRec = "${formatDecimal(pastBestSet.weight ?: 0.0)} kg x ${pastBestSet.reps ?: 0}"
-                    val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                     val newRec = "${formatDecimal(currentBestSet.weight ?: 0.0)} kg x ${currentBestSet.reps ?: 0}"
-                    celebrateRecordBroken(RecordBrokenState(exercise.name, oldRec, newRec))
+                    celebrateRecordBroken(workoutId, exerciseId, exercise.name, freshOldRec, newRec)
                 }
 
                 val prSet = if (hasNewPR) currentBestSet else null
@@ -1719,9 +1684,8 @@ class WorkoutViewModel(
                     
                     if (isBrokenRecord && firstPRSet != null && !firstPRSet.isPR) {
                         val freshOldRec = formatTime(pastBestTime)
-                        val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                         val newRec = formatTime(maxTime)
-                        celebrateRecordBroken(RecordBrokenState(exercise.name, oldRec, newRec))
+                        celebrateRecordBroken(workoutId, exerciseId, exercise.name, freshOldRec, newRec)
                     }
 
                     sets.forEach { set ->
@@ -1762,9 +1726,8 @@ class WorkoutViewModel(
                         val oldIncl = if ((pastBestSet.inclinePct ?: 0.0) > 0.0) " at ${formatDecimal(pastBestSet.inclinePct ?: 0.0)}%" else ""
                         val newIncl = if ((currentBestSet.inclinePct ?: 0.0) > 0.0) " at ${formatDecimal(currentBestSet.inclinePct ?: 0.0)}%" else ""
                         val freshOldRec = "${formatDecimal(pastBestSet.distance ?: 0.0)} km$oldIncl"
-                        val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                         val newRec = "${formatDecimal(currentBestSet.distance ?: 0.0)} km$newIncl"
-                        celebrateRecordBroken(RecordBrokenState(exercise.name, oldRec, newRec))
+                        celebrateRecordBroken(workoutId, exerciseId, exercise.name, freshOldRec, newRec)
                     }
 
                     val prSet = if (hasNewPR) currentBestSet else null
@@ -1786,9 +1749,8 @@ class WorkoutViewModel(
                 
                 if (isBrokenRecord && firstPRSet != null && !firstPRSet.isPR) {
                     val freshOldRec = formatTime(pastBestTime)
-                    val oldRec = celebrationOldRecord(workoutId, exerciseId, freshOldRec)
                     val newRec = formatTime(maxTime)
-                    celebrateRecordBroken(RecordBrokenState(exercise.name, oldRec, newRec))
+                    celebrateRecordBroken(workoutId, exerciseId, exercise.name, freshOldRec, newRec)
                 }
 
                 sets.forEach { set ->
@@ -1825,6 +1787,38 @@ class WorkoutViewModel(
     // --- User Profile & Strength Logic ---
 
     companion object {
+        // Drives the "Level" label shown on the profile screen off the user's current
+        // strength/stamina scores, independent of the gym-experience choice picked once at
+        // onboarding (that label never moved as the user actually progressed). Ranked-tier
+        // naming, decoupled from onboarding's Beginner/Intermediate/Expert terms. Bands widen
+        // at higher tiers since climbing from Master to Legend should take meaningfully longer
+        // than Bronze to Silver.
+        fun deriveRankTier(strengthScore: Double, staminaScore: Double): String {
+            val avg = (strengthScore + staminaScore) / 2.0
+            return when {
+                avg < 60.0 -> "Bronze"
+                avg < 80.0 -> "Silver"
+                avg < 100.0 -> "Gold"
+                avg < 125.0 -> "Platinum"
+                avg < 160.0 -> "Diamond"
+                avg < 200.0 -> "Master"
+                avg < 260.0 -> "Grandmaster"
+                else -> "Legend"
+            }
+        }
+
+        // Badge icon shown next to the nickname for the current rank tier.
+        fun rankBadgeRes(tier: String): Int = when (tier) {
+            "Bronze" -> R.drawable.badge_bronze
+            "Silver" -> R.drawable.badge_silver
+            "Gold" -> R.drawable.badge_gold
+            "Platinum" -> R.drawable.badge_platinum
+            "Diamond" -> R.drawable.badge_diamond
+            "Master" -> R.drawable.badge_master
+            "Grandmaster" -> R.drawable.badge_grandmaster
+            else -> R.drawable.badge_legend
+        }
+
         // Strength declines more gradually with age than stamina does.
         private fun ageMultStrengthFor(age: Int): Double = when {
             age < 18 -> 0.8
@@ -1899,7 +1893,15 @@ class WorkoutViewModel(
         }
     }
 
-    fun saveUserProfile(nickname: String, age: Int, height: Double, weight: Double, gender: String, gymExperience: String) {
+    fun saveUserProfile(
+        nickname: String,
+        age: Int,
+        height: Double,
+        weight: Double,
+        gender: String,
+        gymExperience: String,
+        equipmentOwned: Set<com.example.workoutbuddy.data.Equipment> = com.example.workoutbuddy.data.Equipment.entries.toSet()
+    ) {
         viewModelScope.launch {
             val initialStrength = calculateInitialStrengthScore(age, height, weight, gender, gymExperience)
             val initialStamina = calculateInitialStaminaScore(age, height, weight, gender, gymExperience)
@@ -1912,7 +1914,8 @@ class WorkoutViewModel(
                 gender = gender,
                 strengthScore = initialStrength,
                 staminaScore = initialStamina,
-                gymExperience = gymExperience
+                gymExperience = gymExperience,
+                equipmentOwned = equipmentOwned.joinToString(",") { it.id }
             )
             repository.saveUserProfile(profile)
 
@@ -1982,13 +1985,6 @@ class WorkoutViewModel(
         }
     }
 
-    fun setEquipmentOwnedSet(equipment: Set<com.example.workoutbuddy.data.Equipment>) {
-        viewModelScope.launch {
-            val currentProfile = repository.getUserProfile() ?: return@launch
-            repository.saveUserProfile(currentProfile.copy(equipmentOwned = equipment.joinToString(",") { it.id }))
-        }
-    }
-
     fun setAllEquipmentOwned() {
         viewModelScope.launch {
             val currentProfile = repository.getUserProfile() ?: return@launch
@@ -2012,19 +2008,38 @@ class WorkoutViewModel(
             "LIFT" -> {
                 val r = reps ?: 0
                 val w = weight ?: 0.0
-                val effectiveWeight = if (w == 0.0) userBodyWeight * 0.6 else w
-                effectiveWeight * (1.0 + r / 30.0)
+                val isBodyweight = w == 0.0
+                val effectiveWeight = if (isBodyweight) userBodyWeight * 0.6 else w
+                // Weighted lifts score 50% higher than before; bodyweight moves (w == 0) are
+                // left untouched since those were already scoring fine.
+                val weightedBoost = if (isBodyweight) 1.0 else 1.5
+                effectiveWeight * (1.0 + r / 30.0) * weightedBoost
             }
             "CARDIO" -> {
                 val tSec = time ?: 1
-                if (exerciseName.contains("Stair Climber", ignoreCase = true)) {
-                    val dist = distance ?: 0.0
-                    dist * 0.1
+                if (exerciseName.contains("Jump Rope", ignoreCase = true)) {
+                    // No distance is ever recorded for Jump Rope, so the distance/speed formula
+                    // below would always score it 0 - score off duration instead.
+                    tSec * 0.2
+                } else if (exerciseName.contains("Battle Ropes", ignoreCase = true)) {
+                    // Battle Ropes' "distance" is an artificial metric only used to derive a
+                    // default duration (see getStandardStartDistance) - it's not a real
+                    // distance, so the distance/speed formula below undersells how demanding
+                    // this actually is. Score off duration instead, same as Jump Rope.
+                    tSec * 0.03
                 } else {
+                    // Distance/speed driven, same formula now used for Stair Climber too
+                    // (its old flat distance*0.1 was disconnected from pace and scored near 0).
+                    // Coefficients tuned so cardio lands in the same rough range as LIFT/HOLD
+                    // (~15-110) rather than dwarfing them. Cycling/Rowing get an extra
+                    // dampening factor since their higher cruising speed otherwise pushes them
+                    // well above other cardio at the same perceived effort.
                     val dist = distance ?: 0.0
                     val speedKmh = if (tSec > 0) (dist / (tSec / 3600.0)).coerceAtMost(30.0) else 0.0
                     val inclineMult = 1.0 + ((inclinePct ?: 0.0) * 0.05)
-                    (dist * 15.0 + speedKmh * 3.0) * inclineMult
+                    val activityFactor = if (exerciseName.contains("Cycling", ignoreCase = true) ||
+                        exerciseName.contains("Rowing", ignoreCase = true)) 0.5 else 1.0
+                    (dist * 6.0 + speedKmh * 1.5) * inclineMult * activityFactor
                 }
             }
             "HOLD" -> {

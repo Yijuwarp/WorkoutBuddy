@@ -1,10 +1,28 @@
 Sound assets in this directory:
 
-tick.ogg, pop.ogg, whoosh.ogg, button_tap.ogg, success_ding.ogg
+tick.ogg, pop.ogg, button_tap.ogg, success_ding.ogg
   Source: Kenney "Interface Sounds" pack (https://kenney.nl/assets/interface-sounds)
   License: CC0 1.0 Universal (Creative Commons Zero / Public Domain)
-  Original filenames: tick_001.ogg, drop_002.ogg, scroll_003.ogg, click_001.ogg, confirmation_002.ogg
+  Original filenames: tick_001.ogg, drop_002.ogg, click_001.ogg, confirmation_002.ogg
   Attribution not required, but credit: Kenney (www.kenney.nl)
+
+whoosh.ogg
+  Source: Kenney "Digital Audio" pack (https://kenney.nl/assets/digital-audio)
+  License: CC0 1.0 Universal (Creative Commons Zero / Public Domain)
+  Original filename: powerUp3.ogg
+  Used for the "Start Workout" button.
+
+timer_end.ogg
+  Source: Kenney "Digital Audio" pack (https://kenney.nl/assets/digital-audio)
+  License: CC0 1.0 Universal (Creative Commons Zero / Public Domain)
+  Original filename: threeTone1.ogg
+  Used for exercise countdown timer completion.
+
+rest_timer_end.ogg
+  Source: Kenney "Digital Audio" pack (https://kenney.nl/assets/digital-audio)
+  License: CC0 1.0 Universal (Creative Commons Zero / Public Domain)
+  Original filename: twoTone1.ogg
+  Used for rest timer completion.
 
 chime.ogg
   Source: Kenney "Music Jingles" pack (https://kenney.nl/assets/music-jingles)

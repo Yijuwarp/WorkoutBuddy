@@ -49,6 +49,15 @@ fun inferEquipmentForExercise(name: String): String {
         n.contains("barbell") -> tags.add(Equipment.BARBELL)
         n.contains("dumbbell") -> tags.add(Equipment.DUMBBELL)
     }
+    // Named variants that don't literally say "barbell"/"dumbbell" in the exercise name but
+    // always use one of them - the generic check above only catches "X Barbell Y"/"X Dumbbell Y".
+    val impliesDumbbell = n.contains("arnold press") || n.contains("overhead tricep extension") ||
+        n.contains("hammer curl") || n.contains("preacher curl") || n.contains("chest-supported row") ||
+        n.contains("concentration curl") || n.contains("bulgarian split squat")
+    if (impliesDumbbell) tags.add(Equipment.DUMBBELL)
+    if (n.contains("romanian deadlift") && !n.contains("dumbbell")) tags.add(Equipment.BARBELL)
+    if (n.contains("hip thrust")) tags.add(Equipment.BARBELL)
+    if (n.contains("seated calf raise")) tags.add(Equipment.LEG_PRESS_MACHINE)
     if (n.contains("kettlebell")) tags.add(Equipment.KETTLEBELL)
     if (n.contains("cable") || n.contains("pushdown") || n.contains("face pull")) {
         tags.add(Equipment.CABLE_MACHINE)

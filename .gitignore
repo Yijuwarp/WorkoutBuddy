@@ -14,6 +14,10 @@
 .cxx
 local.properties
 
+# Release signing credentials - never commit. Back this up somewhere safe outside git;
+# losing it means you can never publish an update to the existing Play Store listing.
+/keystore/
+
 # Cached wger catalog from tools/exercise_import (regenerated via `wger_import.py fetch`)
 /tools/exercise_import/wger_trans.json
 /tools/exercise_import/wger_imgs.json

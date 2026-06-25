@@ -2,6 +2,7 @@ package com.example.workoutbuddy.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -92,20 +94,30 @@ fun ProfileScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Name on the left
-                    Column(
-                        modifier = Modifier.weight(1f)
+                    // Rank badge + name on the left
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = p.nickname,
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                            color = TextDark
+                        val rankTier = WorkoutViewModel.deriveRankTier(p.strengthScore, p.staminaScore)
+                        Image(
+                            painter = painterResource(id = WorkoutViewModel.rankBadgeRes(rankTier)),
+                            contentDescription = "$rankTier rank badge",
+                            modifier = Modifier.size(48.dp)
                         )
-                        Text(
-                            text = "Level: ${p.gymExperience}",
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                            color = TextMuted
-                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = p.nickname,
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                                color = TextDark
+                            )
+                            Text(
+                                text = "Level: $rankTier",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                color = TextMuted
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(16.dp))
@@ -361,7 +373,12 @@ fun ProfileScreen(
                     Switch(
                         checked = p.restTimerEnabled,
                         onCheckedChange = { viewModel.setRestTimerEnabled(it) },
-                        colors = SwitchDefaults.colors(checkedTrackColor = BluePrimary)
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = BluePrimary,
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color(0xFF475569).copy(alpha = 0.5f),
+                            uncheckedBorderColor = Color(0xFF94A3B8)
+                        )
                     )
                 }
 

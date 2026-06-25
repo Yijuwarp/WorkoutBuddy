@@ -11,7 +11,9 @@ enum class AppSound {
     WHOOSH,
     BUTTON_TAP,
     SUCCESS_DING,
-    CHIME
+    CHIME,
+    TIMER_END,
+    REST_TIMER_END
 }
 
 // Short, low-latency UI sound effects. Backed by SoundPool rather than MediaPlayer/ToneGenerator
@@ -36,7 +38,9 @@ class SoundPlayer(context: Context) {
         AppSound.WHOOSH to soundPool.load(appContext, R.raw.whoosh, 1),
         AppSound.BUTTON_TAP to soundPool.load(appContext, R.raw.button_tap, 1),
         AppSound.SUCCESS_DING to soundPool.load(appContext, R.raw.success_ding, 1),
-        AppSound.CHIME to soundPool.load(appContext, R.raw.chime, 1)
+        AppSound.CHIME to soundPool.load(appContext, R.raw.chime, 1),
+        AppSound.TIMER_END to soundPool.load(appContext, R.raw.timer_end, 1),
+        AppSound.REST_TIMER_END to soundPool.load(appContext, R.raw.rest_timer_end, 1)
     )
 
     fun play(sound: AppSound, volume: Float = 1f) {

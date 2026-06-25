@@ -53,11 +53,23 @@ fun OnboardingScreen(
     // User Form State
     var nickname by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("Male") }
-    var age by remember { mutableStateOf(30) }
-    var height by remember { mutableStateOf(175.0) }
-    var weight by remember { mutableStateOf(70.0) }
+    var age by remember { mutableStateOf(35) }
+    var height by remember { mutableStateOf(178.0) }
+    var weight by remember { mutableStateOf(78.0) }
+    var heightWeightTouched by remember { mutableStateOf(false) }
     var gymExperience by remember { mutableStateOf("Beginner") }
     var equipmentOwned by remember { mutableStateOf(com.example.workoutbuddy.data.Equipment.entries.toSet()) }
+
+    // Keep height/weight defaults matched to gender until the user manually adjusts either
+    // slider, so switching gender on the previous step doesn't silently keep stale defaults.
+    LaunchedEffect(gender) {
+        if (!heightWeightTouched) {
+            when (gender) {
+                "Male" -> { height = 178.0; weight = 78.0 }
+                "Female" -> { height = 170.0; weight = 70.0 }
+            }
+        }
+    }
 
     val gradientBg = Brush.verticalGradient(
         colors = listOf(
@@ -101,7 +113,7 @@ fun OnboardingScreen(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "WorkoutBuddy",
+                        text = "Workout Buddy",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Black,
                             color = Color.White,
@@ -129,14 +141,14 @@ fun OnboardingScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
                     ) {
-                        for (i in 1..6) {
+                        for (i in 1..7) {
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
                                     .background(if (step >= i) BlueSecondary else Color.White.copy(alpha = 0.2f))
                             )
-                            if (i < 6) {
+                            if (i < 7) {
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
                         }
@@ -159,32 +171,34 @@ fun OnboardingScreen(
                         when (currentStep) {
                             1 -> OnboardingStep1(
                                 nickname = nickname,
-                                onNicknameChange = { nickname = it },
+                                onNicknameChange = { nickname = it }
+                            )
+                            2 -> OnboardingGenderStep(
                                 gender = gender,
                                 onGenderSelect = { gender = it }
                             )
-                            2 -> OnboardingStep2(
+                            3 -> OnboardingStep2(
                                 age = age,
                                 onAgeChange = { age = it }
                             )
-                            3 -> OnboardingStep3(
+                            4 -> OnboardingStep3(
                                 height = height,
-                                onHeightChange = { height = it },
+                                onHeightChange = { height = it; heightWeightTouched = true },
                                 weight = weight,
-                                onWeightChange = { weight = it }
+                                onWeightChange = { weight = it; heightWeightTouched = true }
                             )
-                            4 -> OnboardingGymExperienceStep(
+                            5 -> OnboardingGymExperienceStep(
                                 experience = gymExperience,
                                 onExperienceChange = { gymExperience = it }
                             )
-                            5 -> OnboardingEquipmentStep(
+                            6 -> OnboardingEquipmentStep(
                                 selected = equipmentOwned,
                                 onToggle = { equipment, owned ->
                                     equipmentOwned = if (owned) equipmentOwned + equipment else equipmentOwned - equipment
                                 },
                                 onSkip = { step++ }
                             )
-                            6 -> OnboardingStep5(
+                            7 -> OnboardingStep5(
                                 nickname = nickname,
                                 gender = gender,
                                 age = age,
@@ -192,8 +206,7 @@ fun OnboardingScreen(
                                 weight = weight,
                                 gymExperience = gymExperience,
                                 onComplete = {
-                                    viewModel.saveUserProfile(nickname.ifBlank { "Buddy" }, age, height, weight, gender, gymExperience)
-                                    viewModel.setEquipmentOwnedSet(equipmentOwned)
+                                    viewModel.saveUserProfile(nickname.ifBlank { "Buddy" }, age, height, weight, gender, gymExperience, equipmentOwned)
                                 }
                             )
                         }
@@ -221,7 +234,7 @@ fun OnboardingScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                         }
 
-                        if (step < 6) {
+                        if (step < 7) {
                             Button(
                                 onClick = {
                                     if (step == 1 && nickname.isBlank()) {
@@ -300,7 +313,7 @@ fun OnboardingGymExperienceStep(
     onExperienceChange: (String) -> Unit
 ) {
     val levels = listOf("Beginner", "Intermediate", "Expert")
-    val snapValues = listOf(0.05f, 0.50f, 0.95f)
+    val snapValues = listOf(0.02f, 0.50f, 0.98f)
     val currentIndex = levels.indexOf(experience).coerceAtLeast(0)
     val sliderValue = snapValues[currentIndex]
 
@@ -313,7 +326,7 @@ fun OnboardingGymExperienceStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Custom Slider with manual track drawing for 5%, 50%, 95% notches
+        // Custom Slider with manual track drawing for 2%, 50%, 98% notches
         Slider(
             value = sliderValue,
             onValueChange = { newValue ->
@@ -359,7 +372,7 @@ fun OnboardingGymExperienceStep(
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f)
                     )
 
-                    // 3. Draw notches at 5%, 50%, 95%
+                    // 3. Draw notches at 2%, 50%, 98%
                     snapValues.forEach { fraction ->
                         val notchX = trackWidth * fraction
                         drawCircle(
@@ -372,7 +385,7 @@ fun OnboardingGymExperienceStep(
             }
         )
 
-        // Custom Layout to align text labels centered on 5%, 50%, 95% notches
+        // Custom Layout to align text labels centered on 2%, 50%, 98% notches
         Layout(
             content = {
                 levels.forEachIndexed { idx, level ->
@@ -449,9 +462,7 @@ fun OnboardingGymExperienceStep(
 @Composable
 fun OnboardingStep1(
     nickname: String,
-    onNicknameChange: (String) -> Unit,
-    gender: String,
-    onGenderSelect: (String) -> Unit
+    onNicknameChange: (String) -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -486,14 +497,30 @@ fun OnboardingStep1(
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
-                .padding(bottom = 24.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun OnboardingGenderStep(
+    gender: String,
+    onGenderSelect: (String) -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "What's your gender?",
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black, color = Color.White),
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = "This helps us tune baseline strength and stamina estimates.",
+            style = MaterialTheme.typography.bodyMedium.copy(color = Color.White.copy(alpha = 0.7f)),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = 12.dp)
         )
 
-        Text(
-            text = "Select Gender",
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = Color.White),
-            modifier = Modifier.align(Alignment.Start).padding(bottom = 12.dp)
-        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         val isKeyboardOpen = androidx.compose.foundation.layout.WindowInsets.isImeVisible
         Row(

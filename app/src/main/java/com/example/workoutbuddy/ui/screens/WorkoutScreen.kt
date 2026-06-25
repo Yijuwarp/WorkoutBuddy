@@ -22,12 +22,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.workoutbuddy.audio.AppSound
+import com.example.workoutbuddy.audio.Haptics
 import com.example.workoutbuddy.data.Equipment
 import com.example.workoutbuddy.theme.*
 import com.example.workoutbuddy.ui.components.*
@@ -501,7 +503,15 @@ fun WorkoutScreen(
         recordBrokenCelebration?.let { celeb ->
             val cardEntrance = remember { Animatable(0f) }
             val trophyBounce = remember { Animatable(0f) }
+            val soundPlayer = LocalSoundPlayer.current
+            val context = LocalContext.current
             LaunchedEffect(celeb) {
+                // Fire the chime/haptic here, when the dialog actually becomes visible, rather
+                // than from the ViewModel - the dialog itself is deferred until the user leaves
+                // the exercise detail screen, so playing the sound at detection time meant it
+                // could fire well before the popup was ever shown.
+                soundPlayer.play(AppSound.CHIME)
+                Haptics.celebrate(context)
                 cardEntrance.snapTo(0f)
                 trophyBounce.snapTo(0f)
                 cardEntrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
@@ -668,6 +678,12 @@ fun WorkoutScreen(
                 isRestTimerExpanded = showRestModal,
                 onSkipCooldown = { viewModel.skipCooldown() },
                 onShowRestTimer = { showRestModal = true },
+                countdownExerciseName = countdownExercise,
+                countdownRemaining = countdownRemaining,
+                countdownDuration = countdownTotal,
+                isCountdownExpanded = showCountdownModal,
+                onShowCountdownTimer = { showCountdownModal = true },
+                onCompleteCountdownEarly = { viewModel.completeCountdownEarly() },
                 onDismissRequest = {
                     viewModel.onExerciseScreenClosed(exerciseState.exercise.id)
                     selectedExerciseId = null
