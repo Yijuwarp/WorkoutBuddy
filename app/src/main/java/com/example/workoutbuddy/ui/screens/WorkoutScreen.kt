@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -105,7 +106,7 @@ fun WorkoutScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -199,7 +200,7 @@ fun WorkoutScreen(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = formatDuration(durationSec),
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, fontSize = 24.sp),
                         color = timerTextColor
                     )
                 }
@@ -210,7 +211,7 @@ fun WorkoutScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                contentPadding = PaddingValues(bottom = 16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Dashboard Intensity & Burn Dials — scrolls with list
@@ -218,8 +219,7 @@ fun WorkoutScreen(
                     activeWorkout?.let { workout ->
                         Card(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .fillMaxWidth(),
                             shape = MaterialTheme.shapes.large,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
@@ -503,6 +503,16 @@ fun WorkoutScreen(
         recordBrokenCelebration?.let { celeb ->
             val cardEntrance = remember { Animatable(0f) }
             val trophyBounce = remember { Animatable(0f) }
+            val shimmer = rememberInfiniteTransition(label = "prShimmer")
+            val shimmerPulse by shimmer.animateFloat(
+                initialValue = 0.35f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 1100, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "prShimmerPulse"
+            )
             val soundPlayer = LocalSoundPlayer.current
             val context = LocalContext.current
             LaunchedEffect(celeb) {
@@ -526,29 +536,39 @@ fun WorkoutScreen(
                         .alpha(cardEntrance.value),
                     shape = MaterialTheme.shapes.extraLarge,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.5.dp, GoldPR),
+                    border = BorderStroke(1.5.dp, GoldPR.copy(alpha = shimmerPulse)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Celebration Gold Badge with Icon
-                        Box(
-                            modifier = Modifier
-                                .size(80.dp)
-                                .scale(0.3f + 0.7f * trophyBounce.value)
-                                .clip(CircleShape)
-                                .background(AmberWarningBgLight)
-                                .border(2.dp, GoldPR, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.EmojiEvents,
-                                contentDescription = "Trophy",
-                                tint = GoldPR,
-                                modifier = Modifier.size(44.dp)
+                        // Celebration Gold Badge with Icon, plus a soft pulsing glow behind it
+                        Box(contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .scale(0.3f + 0.7f * trophyBounce.value)
+                                    .blur(18.dp)
+                                    .clip(CircleShape)
+                                    .background(GoldPR.copy(alpha = 0.45f * shimmerPulse))
                             )
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .scale(0.3f + 0.7f * trophyBounce.value)
+                                    .clip(CircleShape)
+                                    .background(AmberWarningBgLight)
+                                    .border(2.dp, GoldPR, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.EmojiEvents,
+                                    contentDescription = "Trophy",
+                                    tint = GoldPR,
+                                    modifier = Modifier.size(44.dp)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

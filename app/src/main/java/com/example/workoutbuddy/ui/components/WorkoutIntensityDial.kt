@@ -57,7 +57,7 @@ fun WorkoutIntensityDial(
         }
     }
 
-    val dialColor = Color(0xFFEF4444) // Performance dial stays red
+    val dialColor = PerformanceRed
 
     Box(
         modifier = modifier.size(130.dp),
@@ -108,10 +108,10 @@ fun WorkoutIntensityDial(
         ) {
             Text(
                 text = "${intensityScore.toInt()}",
-                fontSize = 28.sp,
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Black,
                 color = TextDark,
-                lineHeight = 28.sp
+                lineHeight = 32.sp
             )
             Spacer(modifier = Modifier.height(1.dp))
             Text(
@@ -161,7 +161,7 @@ fun WorkoutBurnDial(
         }
     }
 
-    val dialColor = Color(0xFFF59E0B) // Burn dial stays yellow
+    val dialColor = BurnAmber
 
     Box(
         modifier = modifier.size(130.dp),
@@ -212,10 +212,10 @@ fun WorkoutBurnDial(
         ) {
             Text(
                 text = "${burnedCalories.toInt()}",
-                fontSize = 28.sp,
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Black,
                 color = TextDark,
-                lineHeight = 28.sp
+                lineHeight = 32.sp
             )
             Spacer(modifier = Modifier.height(1.dp))
             Text(

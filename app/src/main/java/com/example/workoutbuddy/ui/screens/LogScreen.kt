@@ -5,6 +5,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -214,9 +216,10 @@ fun QuickStatItem(
     }
 }
 
-// Calories/Steps/Records always anchor row 1 (Records in slot 3); Strength/Stamina spill onto
-// a second row since a 5-item Row with Arrangement.Start has no wrapping and squeezes whichever
-// item runs out of width — that's what was crushing the "Records" column down to one letter per line.
+// All stats sit in a single wrapping row, spilling onto a second line only if they don't fit
+// on one — rather than calories/steps/records hard-pinned to row 1 and strength/stamina forced
+// onto a separate row regardless of available width.
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun WorkoutQuickStats(
     calories: Int,
@@ -226,66 +229,51 @@ fun WorkoutQuickStats(
     prCount: Int,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            QuickStatItem(label = "$calories kcal", subtext = "Burned")
-            if (steps > 0) {
-                Spacer(modifier = Modifier.width(24.dp))
-                QuickStatItem(label = "$steps", subtext = "Steps")
-            }
-            if (prCount > 0) {
-                Spacer(modifier = Modifier.width(24.dp))
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            tint = GoldPR,
-                            modifier = Modifier.size(14.dp).padding(end = 2.dp)
-                        )
-                        Text(
-                            text = "$prCount",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = GoldPR
-                        )
-                    }
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        QuickStatItem(label = "$calories kcal", subtext = "Burned")
+        if (steps > 0) {
+            QuickStatItem(label = "$steps", subtext = "Steps")
+        }
+        if (prCount > 0) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = GoldPR,
+                        modifier = Modifier.size(14.dp).padding(end = 2.dp)
+                    )
                     Text(
-                        text = "Records",
-                        fontSize = 10.sp,
-                        color = TextMuted
+                        text = "$prCount",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldPR
                     )
                 }
+                Text(
+                    text = "Records",
+                    fontSize = 10.sp,
+                    color = TextMuted
+                )
             }
         }
-
-        if (strengthGain > 0.0 || staminaGain > 0.0) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (strengthGain > 0.0) {
-                    QuickStatItem(
-                        label = "+${String.format("%.1f", strengthGain)}",
-                        subtext = "Strength",
-                        labelColor = RedDangerLight
-                    )
-                }
-                if (staminaGain > 0.0) {
-                    if (strengthGain > 0.0) Spacer(modifier = Modifier.width(24.dp))
-                    QuickStatItem(
-                        label = "+${String.format("%.1f", staminaGain)}",
-                        subtext = "Stamina",
-                        labelColor = AmberWarning
-                    )
-                }
-            }
+        if (strengthGain > 0.0) {
+            QuickStatItem(
+                label = "+${String.format("%.1f", strengthGain)}",
+                subtext = "Strength",
+                labelColor = RedDangerLight
+            )
+        }
+        if (staminaGain > 0.0) {
+            QuickStatItem(
+                label = "+${String.format("%.1f", staminaGain)}",
+                subtext = "Stamina",
+                labelColor = AmberWarning
+            )
         }
     }
 }

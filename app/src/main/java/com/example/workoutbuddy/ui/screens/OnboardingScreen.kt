@@ -73,9 +73,9 @@ fun OnboardingScreen(
 
     val gradientBg = Brush.verticalGradient(
         colors = listOf(
-            TextDark, // Slate 900
-            SlateDarker, // Slate 800
-            TextDark  // Slate 900
+            LightBackground,
+            SlateDarker,
+            LightBackground
         )
     )
 
@@ -132,7 +132,7 @@ fun OnboardingScreen(
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
             ) {
                 Column(
-                    modifier = Modifier.padding(28.dp),
+                    modifier = Modifier.fillMaxWidth().padding(28.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Step Indicator (1 to 5)
@@ -157,6 +157,7 @@ fun OnboardingScreen(
                     // Content based on Step
                     AnimatedContent(
                         targetState = step,
+                        modifier = Modifier.fillMaxWidth(),
                         transitionSpec = {
                             if (targetState > initialState) {
                                 slideInHorizontally { width -> width } + fadeIn() togetherWith
@@ -215,12 +216,42 @@ fun OnboardingScreen(
                     Spacer(modifier = Modifier.height(28.dp))
 
                     // Action buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (step > 1) {
+                    val nextButtonContent: @Composable RowScope.() -> Unit = {
+                        Text("Next", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                    val onNextClick: () -> Unit = {
+                        if (step == 1 && nickname.isBlank()) {
+                            // Highlight or alert
+                        } else {
+                            step++
+                        }
+                    }
+                    val nextEnabled = step != 1 || nickname.isNotBlank()
+                    val nextColors = ButtonDefaults.buttonColors(
+                        containerColor = BluePrimary,
+                        disabledContainerColor = Color.White.copy(alpha = 0.1f)
+                    )
+
+                    if (step == 1) {
+                        // Only the Next button exists on this step - render it directly with
+                        // fillMaxWidth() instead of inside a weighted Row, since that's a single
+                        // unambiguous width source with no sibling/arrangement interaction.
+                        if (step < 7) {
+                            Button(
+                                onClick = onNextClick,
+                                enabled = nextEnabled,
+                                colors = nextColors,
+                                shape = MaterialTheme.shapes.medium,
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                content = nextButtonContent
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             OutlinedButton(
                                 onClick = { step-- },
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
@@ -230,31 +261,19 @@ fun OnboardingScreen(
                             ) {
                                 Text("Back", fontWeight = FontWeight.Bold)
                             }
-                        } else {
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
 
-                        if (step < 7) {
-                            Button(
-                                onClick = {
-                                    if (step == 1 && nickname.isBlank()) {
-                                        // Highlight or alert
-                                    } else {
-                                        step++
-                                    }
-                                },
-                                enabled = step != 1 || nickname.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = BluePrimary,
-                                    disabledContainerColor = Color.White.copy(alpha = 0.1f)
-                                ),
-                                shape = MaterialTheme.shapes.medium,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 12.dp)
-                                    .height(48.dp)
-                            ) {
-                                Text("Next", fontWeight = FontWeight.Bold, color = Color.White)
+                            if (step < 7) {
+                                Button(
+                                    onClick = onNextClick,
+                                    enabled = nextEnabled,
+                                    colors = nextColors,
+                                    shape = MaterialTheme.shapes.medium,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 12.dp)
+                                        .height(48.dp),
+                                    content = nextButtonContent
+                                )
                             }
                         }
                     }

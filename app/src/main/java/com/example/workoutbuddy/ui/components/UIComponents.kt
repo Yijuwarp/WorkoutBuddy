@@ -814,7 +814,7 @@ fun ExerciseDetailBottomSheet(
                                 }
                             },
                             modifier = Modifier.weight(1f).height(48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = SlateButton),
+                            colors = ButtonDefaults.buttonColors(containerColor = BorderLight),
                             shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Log All Sets", fontWeight = FontWeight.Bold, color = Color.White)
@@ -837,7 +837,7 @@ fun ExerciseDetailBottomSheet(
                                 }
                             },
                             modifier = Modifier.weight(1.2f).height(48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = RoseAccent),
+                            colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
                             shape = MaterialTheme.shapes.medium
                         ) {
                             val text = if (hasTimer) "Start Timer" else "Log Set"
@@ -855,7 +855,7 @@ fun ExerciseDetailBottomSheet(
                     Text(
                         text = "Start the workout to log your sets",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = RoseAccent,
+                        color = AmberWarning,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                     )
@@ -1146,9 +1146,19 @@ fun SetRowItem(
         }
     }
 
+    val rowFlash = remember { Animatable(0f) }
+    LaunchedEffect(set.isCompleted) {
+        if (set.isCompleted) {
+            rowFlash.snapTo(1f)
+            rowFlash.animateTo(0f, animationSpec = tween(durationMillis = 600))
+        }
+    }
+    val flashColor = if (set.isPR) GoldPR else GreenSuccess
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(MaterialTheme.shapes.small)
+            .background(flashColor.copy(alpha = 0.25f * rowFlash.value))
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1628,10 +1638,15 @@ fun CountdownTimerDialog(
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 // Circular Timer Representation - Center aligned & clickable to pause/resume
+                val urgent = !isPaused && remainingSeconds in 1..3
                 val urgencyScale by animateFloatAsState(
-                    targetValue = if (!isPaused && remainingSeconds in 1..3) 1.08f else 1f,
+                    targetValue = if (urgent) 1.08f else 1f,
                     animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
                     label = "urgencyPulse"
+                )
+                val urgencyTextColor by animateColorAsState(
+                    targetValue = if (urgent) GoldPR else TextDark,
+                    label = "urgencyTextColor"
                 )
                 Box(
                     contentAlignment = Alignment.Center,
@@ -1656,7 +1671,7 @@ fun CountdownTimerDialog(
                         Text(
                             text = formatTime(remainingSeconds),
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = TextDark
+                            color = urgencyTextColor
                         )
                         if (isPaused) {
                             Text(
@@ -1760,23 +1775,33 @@ fun RestTimerModal(
                         color = TextBlue
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
+                    val restUrgent = remainingSeconds in 1..3
+                    val urgencyScale by animateFloatAsState(
+                        targetValue = if (restUrgent) 1.08f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+                        label = "restTimerUrgencyPulse"
+                    )
+                    val restUrgencyTextColor by animateColorAsState(
+                        targetValue = if (restUrgent) GoldPR else TextDark,
+                        label = "restTimerUrgencyTextColor"
+                    )
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(100.dp)
+                        modifier = Modifier.size(100.dp).scale(urgencyScale)
                     ) {
                         val progress = if (totalDuration > 0) remainingSeconds.toFloat() / totalDuration else 0f
                         CircularProgressIndicator(
                             progress = progress,
                             modifier = Modifier.fillMaxSize(),
-                            color = BluePrimary,
+                            color = if (restUrgent) GoldPR else BluePrimary,
                             trackColor = BorderLight,
                             strokeWidth = 6.dp
                         )
                         Text(
                             text = formatTime(remainingSeconds),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                            color = TextDark
+                            color = restUrgencyTextColor
                         )
                     }
                     
@@ -1835,15 +1860,21 @@ fun CooldownBanner(
                 modifier = Modifier.weight(1f)
             ) {
                 // Mini timer
+                val cooldownUrgent = remainingSeconds in 1..3
+                val cooldownPulse by animateFloatAsState(
+                    targetValue = if (cooldownUrgent) 1.12f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+                    label = "cooldownBannerPulse"
+                )
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp).scale(cooldownPulse)
                 ) {
                     val progress = if (totalDuration > 0) remainingSeconds.toFloat() / totalDuration else 0f
                     CircularProgressIndicator(
                         progress = progress,
                         modifier = Modifier.fillMaxSize(),
-                        color = BluePrimary,
+                        color = if (cooldownUrgent) GoldPR else BluePrimary,
                         trackColor = Color.White.copy(alpha = 0.5f),
                         strokeWidth = 3.dp
                     )
@@ -1851,12 +1882,12 @@ fun CooldownBanner(
                         text = remainingSeconds.toString(),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextBlue
+                        color = if (cooldownUrgent) GoldPR else TextBlue
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(12.dp))
-                
+
                 Column {
                     Text(
                         text = "Rest",
@@ -1904,15 +1935,21 @@ fun CountdownBanner(
                 modifier = Modifier.weight(1f)
             ) {
                 // Mini timer
+                val countdownUrgent = remainingSeconds in 1..3
+                val countdownPulse by animateFloatAsState(
+                    targetValue = if (countdownUrgent) 1.12f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+                    label = "countdownBannerPulse"
+                )
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp).scale(countdownPulse)
                 ) {
                     val progress = if (totalDuration > 0) remainingSeconds.toFloat() / totalDuration else 0f
                     CircularProgressIndicator(
                         progress = progress,
                         modifier = Modifier.fillMaxSize(),
-                        color = BluePrimary,
+                        color = if (countdownUrgent) GoldPR else BluePrimary,
                         trackColor = Color.White.copy(alpha = 0.5f),
                         strokeWidth = 3.dp
                     )
@@ -1920,12 +1957,12 @@ fun CountdownBanner(
                         text = remainingSeconds.toString(),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextBlue
+                        color = if (countdownUrgent) GoldPR else TextBlue
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(12.dp))
-                
+
                 Text(
                     text = exerciseName,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),

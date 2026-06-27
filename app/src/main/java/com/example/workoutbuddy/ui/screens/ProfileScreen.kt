@@ -302,40 +302,40 @@ fun ProfileScreen(
                             )
                         }
                     }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(28.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-            // Save Details Button
-            Button(
-                onClick = {
-                    val ageVal = ageText.toIntOrNull()
-                    val heightVal = heightText.toDoubleOrNull()
-                    val weightVal = weightText.replace(",", ".").toDoubleOrNull()
+                    // Save Details Button
+                    Button(
+                        onClick = {
+                            val ageVal = ageText.toIntOrNull()
+                            val heightVal = heightText.toDoubleOrNull()
+                            val weightVal = weightText.replace(",", ".").toDoubleOrNull()
 
-                    if (nickname.isBlank()) {
-                        Toast.makeText(context, "Nickname cannot be empty", Toast.LENGTH_SHORT).show()
-                    } else if (ageVal == null || ageVal <= 0 || ageVal > 120) {
-                        Toast.makeText(context, "Please enter a valid age", Toast.LENGTH_SHORT).show()
-                    } else if (heightVal == null || heightVal <= 0.0 || heightVal > 300.0) {
-                        Toast.makeText(context, "Please enter a valid height", Toast.LENGTH_SHORT).show()
-                    } else if (weightVal == null || weightVal <= 0.0 || weightVal > 500.0) {
-                        Toast.makeText(context, "Please enter a valid weight", Toast.LENGTH_SHORT).show()
-                    } else {
-                        viewModel.updateUserProfile(nickname, ageVal, heightVal, weightVal, gender)
-                        Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
+                            if (nickname.isBlank()) {
+                                Toast.makeText(context, "Nickname cannot be empty", Toast.LENGTH_SHORT).show()
+                            } else if (ageVal == null || ageVal <= 0 || ageVal > 120) {
+                                Toast.makeText(context, "Please enter a valid age", Toast.LENGTH_SHORT).show()
+                            } else if (heightVal == null || heightVal <= 0.0 || heightVal > 300.0) {
+                                Toast.makeText(context, "Please enter a valid height", Toast.LENGTH_SHORT).show()
+                            } else if (weightVal == null || weightVal <= 0.0 || weightVal > 500.0) {
+                                Toast.makeText(context, "Please enter a valid weight", Toast.LENGTH_SHORT).show()
+                            } else {
+                                viewModel.updateUserProfile(nickname, ageVal, heightVal, weightVal, gender)
+                                Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Save Changes", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Icon(Icons.Default.Save, contentDescription = null, tint = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Save Changes", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                }
             }
 
             Spacer(modifier = Modifier.height(28.dp))

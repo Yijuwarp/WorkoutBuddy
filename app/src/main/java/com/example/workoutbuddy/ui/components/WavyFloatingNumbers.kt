@@ -6,11 +6,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.workoutbuddy.theme.BlueSecondary
+import com.example.workoutbuddy.theme.BurnAmber
+import com.example.workoutbuddy.theme.PerformanceRed
 import com.example.workoutbuddy.viewmodel.FloatingNumber
 import com.example.workoutbuddy.viewmodel.WorkoutViewModel
 import kotlinx.coroutines.delay
@@ -96,15 +99,26 @@ fun WavyFloatingItem(
             ),
         contentAlignment = Alignment.Center
     ) {
+        val color = when (colorType) {
+            "red" -> PerformanceRed
+            "yellow" -> BurnAmber
+            else -> BlueSecondary
+        }
+        // Soft glow: a blurred duplicate sitting behind the crisp text, on-brand with the
+        // PRD's "glow accent" treatment for celebratory/feedback moments.
         Text(
             text = text,
             fontSize = 32.sp,
             fontWeight = FontWeight.Black,
-            color = when (colorType) {
-                "red" -> Color(0xFFEF4444)
-                "yellow" -> Color(0xFFF59E0B)
-                else -> Color(0xFF8B5CF6)
-            },
+            color = color.copy(alpha = 0.6f),
+            letterSpacing = 1.sp,
+            modifier = Modifier.blur(14.dp)
+        )
+        Text(
+            text = text,
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Black,
+            color = color,
             letterSpacing = 1.sp
         )
     }
