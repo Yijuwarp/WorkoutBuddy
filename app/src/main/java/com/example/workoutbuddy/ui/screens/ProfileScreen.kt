@@ -1,6 +1,7 @@
 package com.example.workoutbuddy.ui.screens
 
 import android.widget.Toast
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -17,7 +18,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -419,10 +422,18 @@ fun ProfileScreen(
             Equipment.parseCsv(profileState?.equipmentOwned ?: Equipment.allIdsCsv)
         }
         var selected by remember(profileState) { mutableStateOf(owned) }
+        val entrance = remember { Animatable(0f) }
+        LaunchedEffect(Unit) {
+            entrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+        }
 
         Dialog(onDismissRequest = { showEquipmentDialog = false }) {
             Card(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 560.dp)
+                    .scale(0.92f + 0.08f * entrance.value)
+                    .alpha(entrance.value),
                 shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
