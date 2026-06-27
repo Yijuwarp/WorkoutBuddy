@@ -828,12 +828,12 @@ fun OnboardingStep5(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Strength Score Badge
+            // Strength Score Badge — red to match the Strength score treatment on ProfileScreen
             Box(
                 modifier = Modifier
                     .size(110.dp)
-                    .border(2.dp, BlueSecondary.copy(alpha = 0.5f), CircleShape)
-                    .background(BluePrimary.copy(alpha = 0.15f), CircleShape),
+                    .border(2.dp, RedDangerLight.copy(alpha = 0.5f), CircleShape)
+                    .background(RedDangerLight.copy(alpha = 0.15f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -848,7 +848,7 @@ fun OnboardingStep5(
                         text = "STRENGTH",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = BlueSecondary,
+                        color = RedDangerLight,
                         letterSpacing = 0.5.sp
                     )
                 }
