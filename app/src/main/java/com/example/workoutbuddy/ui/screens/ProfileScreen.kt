@@ -50,7 +50,9 @@ fun ProfileScreen(
     var ageText by remember { mutableStateOf("") }
     var heightText by remember { mutableStateOf("") }
     var weightText by remember { mutableStateOf("") }
-    var showEquipmentDialog by remember { mutableStateOf(false) }
+    var showEquipmentScreen by remember { mutableStateOf(false) }
+    var showDifficultyDialog by remember { mutableStateOf(false) }
+    var showManageExercises by remember { mutableStateOf(false) }
 
     // Sync input states once profile is loaded
     LaunchedEffect(profileState) {
@@ -61,6 +63,24 @@ fun ProfileScreen(
             heightText = p.height.toInt().toString()
             weightText = String.format("%.1f", p.weight)
         }
+    }
+
+    if (showManageExercises) {
+        ManageExercisesScreen(
+            viewModel = viewModel,
+            onBack = { showManageExercises = false },
+            modifier = modifier
+        )
+        return
+    }
+
+    if (showEquipmentScreen) {
+        EquipmentScreen(
+            viewModel = viewModel,
+            onBack = { showEquipmentScreen = false },
+            modifier = modifier
+        )
+        return
     }
 
     val scrollState = rememberScrollState()
@@ -390,7 +410,7 @@ fun ProfileScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showEquipmentDialog = true }
+                        .clickable { showEquipmentScreen = true }
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -399,6 +419,50 @@ fun ProfileScreen(
                         Text("Equipment", fontWeight = FontWeight.Bold, color = TextDark, fontSize = 14.sp)
                         Text(
                             "Choose what you have access to so workouts only use it",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = TextMuted)
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDifficultyDialog = true }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Difficulty", fontWeight = FontWeight.Bold, color = TextDark, fontSize = 14.sp)
+                        Text(
+                            "Currently: ${p.difficultyCeiling?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Easy"}",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = TextMuted)
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showManageExercises = true }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Manage Exercises", fontWeight = FontWeight.Bold, color = TextDark, fontSize = 14.sp)
+                        Text(
+                            "Tell us which exercises you want to see more or less of",
                             color = TextMuted,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 2.dp)
@@ -417,21 +481,21 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(80.dp)) // Extra padding at bottom
     }
 
-    if (showEquipmentDialog) {
-        val owned = remember(profileState) {
-            Equipment.parseCsv(profileState?.equipmentOwned ?: Equipment.allIdsCsv)
+    if (showDifficultyDialog) {
+        val currentCeiling = remember(profileState) {
+            com.example.workoutbuddy.data.Difficulty.fromName(profileState?.difficultyCeiling)
+                ?: com.example.workoutbuddy.data.Difficulty.EASY
         }
-        var selected by remember(profileState) { mutableStateOf(owned) }
+        var selected by remember(profileState) { mutableStateOf(currentCeiling) }
         val entrance = remember { Animatable(0f) }
         LaunchedEffect(Unit) {
             entrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
         }
 
-        Dialog(onDismissRequest = { showEquipmentDialog = false }) {
+        Dialog(onDismissRequest = { showDifficultyDialog = false }) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 560.dp)
                     .scale(0.92f + 0.08f * entrance.value)
                     .alpha(entrance.value),
                 shape = MaterialTheme.shapes.extraLarge,
@@ -444,31 +508,36 @@ fun ProfileScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Your Equipment",
+                            "Difficulty",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
                             color = TextDark
                         )
-                        IconButton(onClick = { showEquipmentDialog = false }) {
+                        IconButton(onClick = { showDifficultyDialog = false }) {
                             Icon(Icons.Default.Close, contentDescription = "Close", tint = TextMuted)
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    EquipmentPickerList(
-                        selected = selected,
-                        onToggle = { equipment, isOwned ->
-                            selected = if (isOwned) selected + equipment else selected - equipment
-                            viewModel.setEquipmentOwned(equipment, isOwned)
-                        },
-                        modifier = Modifier.weight(1f, fill = false)
+                    Text(
+                        "Picking a higher tier also unlocks exercises at every tier below it.",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+
+                    com.example.workoutbuddy.ui.components.DifficultySlider(
+                        selected = selected,
+                        onSelectedChange = { selected = it },
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
                     Button(
-                        onClick = { showEquipmentDialog = false },
+                        onClick = {
+                            viewModel.setDifficultyCeiling(selected)
+                            showDifficultyDialog = false
+                        },
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }

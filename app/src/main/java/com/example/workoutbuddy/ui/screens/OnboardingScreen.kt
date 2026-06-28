@@ -197,6 +197,8 @@ fun OnboardingScreen(
                                 onToggle = { equipment, owned ->
                                     equipmentOwned = if (owned) equipmentOwned + equipment else equipmentOwned - equipment
                                 },
+                                onSelectAll = { equipmentOwned = com.example.workoutbuddy.data.Equipment.entries.toSet() },
+                                onDeselectAll = { equipmentOwned = emptySet() },
                                 onSkip = { step++ }
                             )
                             7 -> OnboardingStep5(
@@ -287,6 +289,8 @@ fun OnboardingScreen(
 fun OnboardingEquipmentStep(
     selected: Set<com.example.workoutbuddy.data.Equipment>,
     onToggle: (com.example.workoutbuddy.data.Equipment, Boolean) -> Unit,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
     onSkip: () -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -302,7 +306,29 @@ fun OnboardingEquipmentStep(
             modifier = Modifier.padding(vertical = 12.dp)
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedButton(
+                onClick = onSelectAll,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+            ) {
+                Text("Select All", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+            OutlinedButton(
+                onClick = onDeselectAll,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+            ) {
+                Text("Deselect All", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),

@@ -107,6 +107,12 @@ class WorkoutViewModel(
     )
     val exerciseUsageStats = MutableStateFlow<Map<Int, ExerciseUsageStat>>(emptyMap())
 
+    // Per-exercise frequency tags (exerciseId -> Frequency). Absent entry = neutral.
+    val exercisePreferences = repository.getAllPreferences()
+        .map { list -> list.associate { it.exerciseId to com.example.workoutbuddy.data.Frequency.fromName(it.frequency) } }
+        .map { it.filterValues { freq -> freq != null }.mapValues { (_, freq) -> freq!! } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
     private fun refreshExerciseUsageStats() {
         viewModelScope.launch {
             exerciseUsageStats.value = repository.getExerciseUsageStats().associateBy { it.exerciseId }
@@ -205,26 +211,31 @@ class WorkoutViewModel(
         val ownedEquipment = com.example.workoutbuddy.data.Equipment.parseCsv(
             profile?.equipmentOwned ?: com.example.workoutbuddy.data.Equipment.allIdsCsv
         )
+        // Ceiling is set at profile creation (proxied from gym experience) or by migration, so
+        // this should always resolve - MEDIUM is just a defensive fallback if it's ever unset.
+        val difficultyCeiling = com.example.workoutbuddy.data.Difficulty.fromName(profile?.difficultyCeiling)
+            ?: com.example.workoutbuddy.data.Difficulty.MEDIUM
+        val preferences = repository.getAllPreferencesOnce()
+            .associate { it.exerciseId to com.example.workoutbuddy.data.Frequency.fromName(it.frequency) }
+            .filterValues { it != null }
+            .mapValues { it.value!! }
 
-        // Randomly select non-cardio exercises for this category every time (rather than
-        // always reusing the exact same exercises as the last workout of this category),
-        // capping how many can share the same bodyPart so the session stays varied
-        // instead of e.g. 4 different chest presses in one PUSH day.
-        val categoryExercises = repository.getExercisesByCategory(category)
-            .filter { it.type != "CARDIO" }
-            .filter { isExerciseAvailable(it, ownedEquipment) }
-        val exerciseIdsToUse = selectDiverseRandomExercises(
-            pool = categoryExercises,
+        // Selection (gates + Always/Often/Less/Never weighting, applied identically to the
+        // main category pool and the cardio pool) lives in selectWorkoutExercises - kept as a
+        // pure function so it's unit-testable without Room/coroutines.
+        val categoryExercises = repository.getExercisesByCategory(category).filter { it.type != "CARDIO" }
+        val allExs = repository.getAllExercises().filter { it.isNotEmpty() }.first()
+        val cardioExercises = allExs.filter { it.type == "CARDIO" }
+
+        val exerciseIdsToUse = selectWorkoutExercises(
+            categoryPool = categoryExercises,
+            cardioPool = cardioExercises,
+            ownedEquipment = ownedEquipment,
+            difficultyCeiling = difficultyCeiling,
+            preferences = preferences,
             count = MAIN_EXERCISES_PER_WORKOUT,
             maxPerBodyPart = MAX_EXERCISES_PER_BODY_PART
-        )
-
-        // Add a random cardio exercise to each workout at the end
-        val allExs = repository.getAllExercises().filter { it.isNotEmpty() }.first()
-        val cardioExercises = allExs.filter { it.type == "CARDIO" && isExerciseAvailable(it, ownedEquipment) }
-        if (cardioExercises.isNotEmpty()) {
-            exerciseIdsToUse.add(cardioExercises.random().id)
-        }
+        ).toMutableList()
 
         val setsToInsert = mutableListOf<WorkoutSetEntity>()
         for (exerciseId in exerciseIdsToUse) {
@@ -275,43 +286,6 @@ class WorkoutViewModel(
             }
         }
         repository.insertWorkoutSets(setsToInsert)
-    }
-
-    // An exercise with no equipment tags is bodyweight-only and always available; otherwise
-    // every tagged equipment must be in the user's owned set.
-    private fun isExerciseAvailable(exercise: ExerciseEntity, ownedEquipment: Set<com.example.workoutbuddy.data.Equipment>): Boolean {
-        val required = com.example.workoutbuddy.data.Equipment.parseCsv(exercise.equipment)
-        return required.isEmpty() || required.all { it in ownedEquipment }
-    }
-
-    /**
-     * Randomly picks up to [count] exercises from [pool], preferring exercises whose
-     * bodyPart hasn't already hit [maxPerBodyPart] in this selection. If the cap makes it
-     * impossible to reach [count] (e.g. a tiny or low-diversity pool), the remainder is
-     * filled ignoring the cap rather than returning fewer exercises than requested.
-     */
-    private fun selectDiverseRandomExercises(pool: List<ExerciseEntity>, count: Int, maxPerBodyPart: Int): MutableList<Int> {
-        val shuffled = pool.shuffled()
-        val selected = mutableListOf<ExerciseEntity>()
-        val bodyPartCounts = mutableMapOf<String, Int>()
-
-        for (exercise in shuffled) {
-            if (selected.size >= count) break
-            val currentCount = bodyPartCounts.getOrDefault(exercise.bodyPart, 0)
-            if (currentCount < maxPerBodyPart) {
-                selected.add(exercise)
-                bodyPartCounts[exercise.bodyPart] = currentCount + 1
-            }
-        }
-
-        if (selected.size < count) {
-            for (exercise in shuffled) {
-                if (selected.size >= count) break
-                if (exercise !in selected) selected.add(exercise)
-            }
-        }
-
-        return selected.map { it.id }.toMutableList()
     }
 
     /**
@@ -1915,7 +1889,11 @@ class WorkoutViewModel(
                 strengthScore = initialStrength,
                 staminaScore = initialStamina,
                 gymExperience = gymExperience,
-                equipmentOwned = equipmentOwned.joinToString(",") { it.id }
+                equipmentOwned = equipmentOwned.joinToString(",") { it.id },
+                // Onboarding doesn't ask for a difficulty ceiling directly anymore - it's
+                // proxied from gym experience so new users start at a sensible default and can
+                // still change it later from Profile settings.
+                difficultyCeiling = com.example.workoutbuddy.data.difficultyFromGymExperience(gymExperience).name
             )
             repository.saveUserProfile(profile)
 
@@ -1933,6 +1911,85 @@ class WorkoutViewModel(
                 generateExercisesForWorkout(draft.id, draft.category)
                 loadExerciseStatesForWorkout(draft.id)
             }
+        }
+    }
+
+    // Tags (or clears, when freq == null) an exercise's frequency preference. Applies silently/
+    // instantly to future generations - no animation, unlike the one-time first-launch overlay.
+    fun setExerciseFrequency(exerciseId: Int, freq: com.example.workoutbuddy.data.Frequency?) {
+        viewModelScope.launch {
+            if (freq == null) {
+                repository.deletePreference(exerciseId)
+            } else {
+                repository.upsertPreference(ExercisePreferenceEntity(exerciseId, freq.name))
+            }
+
+            if (freq == com.example.workoutbuddy.data.Frequency.NEVER) {
+                replaceIfInActiveWorkout(exerciseId)
+            }
+        }
+    }
+
+    // When an exercise is tagged Never while it's part of the current draft/active workout, swap
+    // it out immediately for a random eligible exercise sharing the same bodyPart - same gates
+    // (equipment, difficulty ceiling, Never) as normal generation, just a single random pick
+    // instead of the full weighted selection. If no candidate qualifies, the exercise is simply
+    // left in place rather than leaving the workout short a slot.
+    private suspend fun replaceIfInActiveWorkout(exerciseId: Int) {
+        val activeId = activeWorkout.value?.id ?: return
+        val existingSets = repository.getSetsForWorkout(activeId)
+        if (existingSets.none { it.exerciseId == exerciseId }) return
+
+        val oldExercise = repository.getExerciseById(exerciseId) ?: return
+        val profile = repository.getUserProfile()
+        val ownedEquipment = com.example.workoutbuddy.data.Equipment.parseCsv(
+            profile?.equipmentOwned ?: com.example.workoutbuddy.data.Equipment.allIdsCsv
+        )
+        val difficultyCeiling = com.example.workoutbuddy.data.Difficulty.fromName(profile?.difficultyCeiling)
+            ?: com.example.workoutbuddy.data.Difficulty.MEDIUM
+        val preferences = repository.getAllPreferencesOnce()
+            .mapNotNull { pref -> com.example.workoutbuddy.data.Frequency.fromName(pref.frequency)?.let { pref.exerciseId to it } }
+            .toMap()
+        val existingExerciseIds = existingSets.map { it.exerciseId }.toSet()
+
+        val candidates = repository.getAllExercises().first()
+            .filter { it.bodyPart == oldExercise.bodyPart && it.id !in existingExerciseIds }
+            .filter { isExerciseAvailable(it, ownedEquipment) }
+            .filter { (com.example.workoutbuddy.data.Difficulty.fromName(it.difficulty) ?: com.example.workoutbuddy.data.Difficulty.MEDIUM).tier <= difficultyCeiling.tier }
+            .filter { preferences[it.id] != com.example.workoutbuddy.data.Frequency.NEVER }
+
+        val replacement = candidates.randomOrNull() ?: return
+        replaceExerciseInWorkout(exerciseId, replacement.id)
+    }
+
+    // Changes the difficulty ceiling from Profile settings. Regenerates the active draft so it
+    // reflects the new ceiling immediately rather than waiting for the next workout.
+    fun setDifficultyCeiling(difficulty: com.example.workoutbuddy.data.Difficulty) {
+        viewModelScope.launch {
+            val profile = repository.getUserProfile() ?: return@launch
+            repository.saveUserProfile(profile.copy(difficultyCeiling = difficulty.name))
+            _userProfile.value = repository.getUserProfile()
+            regenerateActiveDraftIfSafe()
+        }
+    }
+
+    // Re-rolls exercise selection for the current draft workout - used whenever a setting that
+    // feeds into selection (equipment, difficulty) changes, and by the manual shuffle action.
+    // Skipped if the draft is already started or completed, since wiping its sets at that point
+    // would discard logged progress rather than just reshuffling an unstarted plan.
+    private suspend fun regenerateActiveDraftIfSafe() {
+        val draft = activeWorkout.value ?: return
+        if (draft.isCompleted || draft.isStarted) return
+        repository.deleteWorkoutSetsForWorkout(draft.id)
+        generateExercisesForWorkout(draft.id, draft.category)
+        loadExerciseStatesForWorkout(draft.id)
+    }
+
+    // Manual "shuffle" action next to the workout type selector - re-rolls the current draft's
+    // exercises without changing any setting.
+    fun shuffleActiveWorkout() {
+        viewModelScope.launch {
+            regenerateActiveDraftIfSafe()
         }
     }
 
@@ -1982,6 +2039,7 @@ class WorkoutViewModel(
             if (owned) current.add(equipment) else current.remove(equipment)
             val updatedProfile = currentProfile.copy(equipmentOwned = current.joinToString(",") { it.id })
             repository.saveUserProfile(updatedProfile)
+            regenerateActiveDraftIfSafe()
         }
     }
 
@@ -1989,6 +2047,42 @@ class WorkoutViewModel(
         viewModelScope.launch {
             val currentProfile = repository.getUserProfile() ?: return@launch
             repository.saveUserProfile(currentProfile.copy(equipmentOwned = com.example.workoutbuddy.data.Equipment.allIdsCsv))
+        }
+    }
+
+    // Bulk replace, used by "Select All" / "Deselect All" and applying a saved preset, rather
+    // than toggling each piece of equipment individually.
+    fun setEquipmentOwnedSet(equipment: Set<com.example.workoutbuddy.data.Equipment>) {
+        viewModelScope.launch {
+            val currentProfile = repository.getUserProfile() ?: return@launch
+            repository.saveUserProfile(currentProfile.copy(equipmentOwned = equipment.joinToString(",") { it.id }))
+            regenerateActiveDraftIfSafe()
+        }
+    }
+
+    val equipmentPresets = repository.getAllEquipmentPresets().stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    // Snapshots the currently-owned equipment under a user-given name (e.g. "Home", "Gym") so
+    // it can be re-applied in one tap later instead of re-toggling each piece by hand.
+    fun saveEquipmentPreset(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            val currentProfile = repository.getUserProfile() ?: return@launch
+            repository.insertEquipmentPreset(
+                EquipmentPresetEntity(name = name.trim(), equipmentCsv = currentProfile.equipmentOwned)
+            )
+        }
+    }
+
+    fun applyEquipmentPreset(preset: EquipmentPresetEntity) {
+        setEquipmentOwnedSet(com.example.workoutbuddy.data.Equipment.parseCsv(preset.equipmentCsv))
+    }
+
+    fun deleteEquipmentPreset(id: Int) {
+        viewModelScope.launch {
+            repository.deleteEquipmentPreset(id)
         }
     }
 

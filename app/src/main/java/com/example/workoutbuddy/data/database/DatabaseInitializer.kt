@@ -1,5 +1,6 @@
 package com.example.workoutbuddy.data.database
 
+import com.example.workoutbuddy.data.difficultyFromImpactLevel
 import com.example.workoutbuddy.data.inferEquipmentForExercise
 
 object DatabaseInitializer {
@@ -908,6 +909,11 @@ object DatabaseInitializer {
                 impactLevel = "HIGH",
                 youtubeUrl = "https://www.youtube.com/watch?v=pQb2xIGioyQ"
             )
-        ).map { it.copy(equipment = inferEquipmentForExercise(it.name)) }
+        ).map {
+            it.copy(
+                equipment = inferEquipmentForExercise(it.name),
+                difficulty = difficultyFromImpactLevel(it.impactLevel).name
+            )
+        }
     }
 }

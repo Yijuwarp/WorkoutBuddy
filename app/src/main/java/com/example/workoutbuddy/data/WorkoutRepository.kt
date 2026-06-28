@@ -136,4 +136,28 @@ class WorkoutRepository(private val workoutDao: WorkoutDao) {
     suspend fun saveUserProfile(profile: UserProfileEntity) = withContext(Dispatchers.IO) {
         workoutDao.insertUserProfile(profile)
     }
+
+    fun getAllPreferences(): Flow<List<ExercisePreferenceEntity>> = workoutDao.getAllPreferences()
+
+    suspend fun getAllPreferencesOnce(): List<ExercisePreferenceEntity> = withContext(Dispatchers.IO) {
+        workoutDao.getAllPreferencesOnce()
+    }
+
+    suspend fun upsertPreference(preference: ExercisePreferenceEntity) = withContext(Dispatchers.IO) {
+        workoutDao.upsertPreference(preference)
+    }
+
+    suspend fun deletePreference(exerciseId: Int) = withContext(Dispatchers.IO) {
+        workoutDao.deletePreference(exerciseId)
+    }
+
+    fun getAllEquipmentPresets(): Flow<List<EquipmentPresetEntity>> = workoutDao.getAllEquipmentPresets()
+
+    suspend fun insertEquipmentPreset(preset: EquipmentPresetEntity): Long = withContext(Dispatchers.IO) {
+        workoutDao.insertEquipmentPreset(preset)
+    }
+
+    suspend fun deleteEquipmentPreset(id: Int) = withContext(Dispatchers.IO) {
+        workoutDao.deleteEquipmentPreset(id)
+    }
 }

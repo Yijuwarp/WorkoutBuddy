@@ -111,4 +111,27 @@ interface WorkoutDao {
 
     @Query("SELECT * FROM user_profile WHERE id = 1 LIMIT 1")
     fun getUserProfileFlow(): Flow<UserProfileEntity?>
+
+    // Exercise Preference Queries
+    @Query("SELECT * FROM exercise_preferences")
+    fun getAllPreferences(): Flow<List<ExercisePreferenceEntity>>
+
+    @Query("SELECT * FROM exercise_preferences")
+    fun getAllPreferencesOnce(): List<ExercisePreferenceEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertPreference(preference: ExercisePreferenceEntity)
+
+    @Query("DELETE FROM exercise_preferences WHERE exerciseId = :exerciseId")
+    fun deletePreference(exerciseId: Int)
+
+    // Equipment Preset Queries
+    @Query("SELECT * FROM equipment_presets ORDER BY id ASC")
+    fun getAllEquipmentPresets(): Flow<List<EquipmentPresetEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertEquipmentPreset(preset: EquipmentPresetEntity): Long
+
+    @Query("DELETE FROM equipment_presets WHERE id = :id")
+    fun deleteEquipmentPreset(id: Int)
 }

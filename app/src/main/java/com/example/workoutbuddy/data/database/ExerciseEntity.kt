@@ -15,5 +15,6 @@ data class ExerciseEntity(
     val howToSteps: String, // Newline separated steps
     val impactLevel: String, // "HIGH", "MEDIUM", "LOW"
     val youtubeUrl: String = "", // YouTube tutorial link
-    val equipment: String = "" // CSV of Equipment ids; empty = bodyweight-only, always available
+    val equipment: String = "", // CSV of Equipment ids; empty = bodyweight-only, always available
+    val difficulty: String = "MEDIUM" // "EASY", "MEDIUM", "HARD" - see Difficulty enum
 )

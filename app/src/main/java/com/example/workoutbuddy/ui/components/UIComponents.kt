@@ -2,6 +2,7 @@ package com.example.workoutbuddy.ui.components
 
 import android.content.Intent
 import android.net.Uri
+import kotlin.math.roundToInt
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -354,9 +355,11 @@ fun ExerciseListItem(
     isWorkoutStarted: Boolean,
     onReplaceExercise: () -> Unit,
     onRemoveExercise: () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    currentFrequency: com.example.workoutbuddy.data.Frequency? = null,
+    onSetFrequency: (com.example.workoutbuddy.data.Frequency?) -> Unit = {}
 ) {
-    val totalSets = exerciseState.sets.size
+    val remainingSets = exerciseState.sets.count { !it.isCompleted }
     val isCompleted = exerciseState.sets.isNotEmpty() && exerciseState.sets.all { it.isCompleted }
     
     val repsText = remember(exerciseState.sets, exerciseState.exercise.type) {
@@ -396,10 +399,24 @@ fun ExerciseListItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ExerciseThumbnail(
-                exerciseName = exerciseState.exercise.name,
-                modifier = Modifier.size(52.dp)
-            )
+            Box(modifier = Modifier.size(52.dp)) {
+                ExerciseThumbnail(
+                    exerciseName = exerciseState.exercise.name,
+                    modifier = Modifier.size(52.dp)
+                )
+                if (isCompleted) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Completed",
+                        tint = GreenSuccess,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(20.dp)
+                            .background(Color.White, CircleShape)
+                            .padding(1.dp)
+                    )
+                }
+            }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -408,7 +425,7 @@ fun ExerciseListItem(
                     color = TextDark
                 )
                 Text(
-                    text = "${exerciseState.exercise.bodyPart} • ($totalSets Sets. $repsText)",
+                    text = "${exerciseState.exercise.bodyPart} • ($remainingSets Sets Left. $repsText)",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                     color = TextBlue // Blue subtext!
                 )
@@ -417,6 +434,7 @@ fun ExerciseListItem(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 run {
                     var showMenu by remember { mutableStateOf(false) }
+                    var showFrequencyDialog by remember { mutableStateOf(false) }
 
                     Box {
                         IconButton(onClick = { showMenu = true }) {
@@ -445,26 +463,50 @@ fun ExerciseListItem(
                                     onRemoveExercise()
                                 }
                             )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text("Control frequency") },
+                                onClick = {
+                                    showMenu = false
+                                    showFrequencyDialog = true
+                                }
+                            )
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
 
-                if (isCompleted) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Completed",
-                        tint = GreenSuccess,
-                        modifier = Modifier.size(24.dp)
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Not Completed",
-                        tint = BorderLight,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    if (showFrequencyDialog) {
+                        Dialog(onDismissRequest = { showFrequencyDialog = false }) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.extraLarge,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            ) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Text(
+                                        text = "How often should we show ${exerciseState.exercise.name}?",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = TextDark
+                                    )
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    FrequencySlider(
+                                        currentFrequency = currentFrequency,
+                                        onFrequencyChange = { freq ->
+                                            onSetFrequency(freq)
+                                            // Never triggers an immediate swap to a different
+                                            // exercise, so this card no longer refers to what
+                                            // the dialog's title/state was about - close it
+                                            // rather than leave it open on a stale exercise.
+                                            if (freq == com.example.workoutbuddy.data.Frequency.NEVER) {
+                                                showFrequencyDialog = false
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
                 }
             }
         }
@@ -2028,7 +2070,9 @@ fun ExercisePickerDialog(
     onExerciseSelected: (ExerciseEntity) -> Unit,
     onCreateExercise: ((String, String, String, String) -> Unit)? = null,
     ownedEquipment: Set<Equipment> = Equipment.entries.toSet(),
-    usageStats: Map<Int, ExerciseUsageStat> = emptyMap()
+    usageStats: Map<Int, ExerciseUsageStat> = emptyMap(),
+    initialTab: Int = 0,
+    initialMuscleGroup: String? = null
 ) {
     var isCreating by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
@@ -2038,9 +2082,12 @@ fun ExercisePickerDialog(
 
     var searchQuery by remember { mutableStateOf("") }
 
-    // Tab state: 0 = All, 1 = Muscle Group
-    var activeTab by remember { mutableStateOf(0) }
-    var selectedMuscleGroup by remember { mutableStateOf<String?>(null) }
+    // Tab state: 0 = All, 1 = Muscle Group. Replace opens this scoped to the exercise being
+    // replaced (initialTab=1, initialMuscleGroup=its bodyPart); the user can still switch tabs
+    // or back out to the muscle-group list to pick a different group, since these are just the
+    // starting values, not a lock-in.
+    var activeTab by remember { mutableStateOf(initialTab) }
+    var selectedMuscleGroup by remember { mutableStateOf(initialMuscleGroup) }
     var showBodyPartPicker by remember { mutableStateOf(false) }
 
     var showSortFilterMenu by remember { mutableStateOf(false) }
@@ -2725,6 +2772,132 @@ fun BodyPartPickerDialog(
                         Text("Apply", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
+            }
+        }
+    }
+}
+
+// --- Frequency Slider (Never <-> Always, 5 snap positions) ---
+
+// The middle position is intentionally `null` and unlabeled: it represents "no change" /
+// neutral, the same as an exercise with no preference row at all. It's a real, reachable slider
+// position (not just a fallback default) so users can explicitly drag back to neutral instead
+// of only being able to move away from it.
+private val FREQUENCY_SLIDER_STEPS: List<com.example.workoutbuddy.data.Frequency?> = listOf(
+    com.example.workoutbuddy.data.Frequency.NEVER,
+    com.example.workoutbuddy.data.Frequency.LESS,
+    null,
+    com.example.workoutbuddy.data.Frequency.OFTEN,
+    com.example.workoutbuddy.data.Frequency.ALWAYS
+)
+
+private val FREQUENCY_SLIDER_NEUTRAL_DEFAULT_INDEX = 2 // the null/no-change position
+
+/**
+ * A 5-position discrete slider between Never and Always, used both in the in-context exercise
+ * card menu and the Manage Exercises screen. The middle position is the unlabeled "no change"
+ * slot. Reports the snapped [Frequency] (or `null` for "no change") only once the user releases
+ * the thumb on a different position than where it started.
+ */
+@Composable
+fun FrequencySlider(
+    currentFrequency: com.example.workoutbuddy.data.Frequency?,
+    onFrequencyChange: (com.example.workoutbuddy.data.Frequency?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val initialIndex = currentFrequency?.let { FREQUENCY_SLIDER_STEPS.indexOf(it) }
+        .let { if (it == null || it < 0) FREQUENCY_SLIDER_NEUTRAL_DEFAULT_INDEX else it }
+    var sliderPosition by remember(currentFrequency) { mutableFloatStateOf(initialIndex.toFloat()) }
+    val snappedIndex = sliderPosition.roundToInt().coerceIn(0, FREQUENCY_SLIDER_STEPS.lastIndex)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Slider(
+            value = sliderPosition,
+            onValueChange = { sliderPosition = it },
+            onValueChangeFinished = {
+                val finalIndex = sliderPosition.roundToInt().coerceIn(0, FREQUENCY_SLIDER_STEPS.lastIndex)
+                sliderPosition = finalIndex.toFloat()
+                if (finalIndex != initialIndex) {
+                    onFrequencyChange(FREQUENCY_SLIDER_STEPS[finalIndex])
+                }
+            },
+            valueRange = 0f..(FREQUENCY_SLIDER_STEPS.size - 1).toFloat(),
+            steps = FREQUENCY_SLIDER_STEPS.size - 2, // 3 intermediate stops between the 5 positions
+            colors = SliderDefaults.colors(
+                thumbColor = BluePrimary,
+                activeTrackColor = BluePrimary,
+                inactiveTrackColor = BluePrimary.copy(alpha = 0.2f)
+            )
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            listOf("Never", "Less", "", "Often", "Always").forEachIndexed { index, label ->
+                Text(
+                    text = label,
+                    fontSize = 11.sp,
+                    fontWeight = if (index == snappedIndex) FontWeight.Bold else FontWeight.Normal,
+                    color = if (index == snappedIndex) BluePrimary else TextMuted
+                )
+            }
+        }
+    }
+}
+
+// --- Difficulty Slider (Easy -> Hard, 3 snap positions) ---
+
+private val DIFFICULTY_SLIDER_STEPS = listOf(
+    com.example.workoutbuddy.data.Difficulty.EASY,
+    com.example.workoutbuddy.data.Difficulty.MEDIUM,
+    com.example.workoutbuddy.data.Difficulty.HARD
+)
+
+/**
+ * A 3-position discrete slider between Easy and Hard, used for both the first-launch difficulty
+ * ceiling picker and the later settings control. Unlike [FrequencySlider] there's no neutral/
+ * untagged state to preserve, so [onSelectedChange] fires on every settled position (including
+ * landing back on the value it started at) and callers hold their own "pending selection" state
+ * until an explicit Continue/Save action persists it.
+ */
+@Composable
+fun DifficultySlider(
+    selected: com.example.workoutbuddy.data.Difficulty,
+    onSelectedChange: (com.example.workoutbuddy.data.Difficulty) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val initialIndex = DIFFICULTY_SLIDER_STEPS.indexOf(selected).coerceIn(0, DIFFICULTY_SLIDER_STEPS.lastIndex)
+    var sliderPosition by remember(selected) { mutableFloatStateOf(initialIndex.toFloat()) }
+    val snappedIndex = sliderPosition.roundToInt().coerceIn(0, DIFFICULTY_SLIDER_STEPS.lastIndex)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Slider(
+            value = sliderPosition,
+            onValueChange = { sliderPosition = it },
+            onValueChangeFinished = {
+                val finalIndex = sliderPosition.roundToInt().coerceIn(0, DIFFICULTY_SLIDER_STEPS.lastIndex)
+                sliderPosition = finalIndex.toFloat()
+                onSelectedChange(DIFFICULTY_SLIDER_STEPS[finalIndex])
+            },
+            valueRange = 0f..(DIFFICULTY_SLIDER_STEPS.size - 1).toFloat(),
+            steps = DIFFICULTY_SLIDER_STEPS.size - 2, // 1 intermediate stop between the 3 positions
+            colors = SliderDefaults.colors(
+                thumbColor = BluePrimary,
+                activeTrackColor = BluePrimary,
+                inactiveTrackColor = BluePrimary.copy(alpha = 0.2f)
+            )
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            listOf("Easy", "Medium", "Hard").forEachIndexed { index, label ->
+                Text(
+                    text = label,
+                    fontSize = 12.sp,
+                    fontWeight = if (index == snappedIndex) FontWeight.Bold else FontWeight.Normal,
+                    color = if (index == snappedIndex) BluePrimary else TextMuted
+                )
             }
         }
     }

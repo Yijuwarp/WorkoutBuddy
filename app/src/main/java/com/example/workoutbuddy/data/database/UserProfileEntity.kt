@@ -16,5 +16,6 @@ data class UserProfileEntity(
     val staminaScore: Double = 100.0,
     val gymExperience: String = "Beginner",
     val restTimerEnabled: Boolean = true,
-    val equipmentOwned: String = Equipment.allIdsCsv // CSV of Equipment ids the user has access to
+    val equipmentOwned: String = Equipment.allIdsCsv, // CSV of Equipment ids the user has access to
+    val difficultyCeiling: String? = null // "EASY"/"MEDIUM"/"HARD"; null = unset, shows first-launch tuning overlay
 )

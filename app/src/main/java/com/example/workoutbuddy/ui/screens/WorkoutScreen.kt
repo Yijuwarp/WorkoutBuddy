@@ -69,6 +69,7 @@ fun WorkoutScreen(
     val isCountdownActive by viewModel.isCountdownActive.collectAsState()
     val isCountdownPaused by viewModel.isCountdownPaused.collectAsState()
     val allExercises by viewModel.allExercises.collectAsState()
+    val exercisePreferences by viewModel.exercisePreferences.collectAsState()
 
     var showCategoryMenu by remember { mutableStateOf(false) }
     var showAddExerciseDialog by remember { mutableStateOf(false) }
@@ -111,59 +112,71 @@ fun WorkoutScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Workout Category Badge & Switcher
+                // Workout Category Badge & Switcher, plus the shuffle action right beside it
                 activeWorkout?.let { workout ->
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { if (!isStarted) showCategoryMenu = true }
-                        ) {
-                            val badgeColor = when (workout.category) {
-                                "PUSH" -> BluePrimary
-                                "PULL" -> GreenSuccess
-                                "LOWER_BODY" -> GoldPR
-                                else -> BlueSecondary
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { if (!isStarted) showCategoryMenu = true }
+                            ) {
+                                val badgeColor = when (workout.category) {
+                                    "PUSH" -> BluePrimary
+                                    "PULL" -> GreenSuccess
+                                    "LOWER_BODY" -> GoldPR
+                                    else -> BlueSecondary
+                                }
+                                Text(
+                                    text = workout.category.replace("_", " "),
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                                    color = badgeColor
+                                )
+                                if (!isStarted) {
+                                    Icon(
+                                        Icons.Default.ArrowDropDown,
+                                        contentDescription = "Change category",
+                                        tint = TextMuted,
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                }
                             }
-                            Text(
-                                text = workout.category.replace("_", " "),
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                                color = badgeColor
-                            )
-                            if (!isStarted) {
-                                Icon(
-                                    Icons.Default.ArrowDropDown,
-                                    contentDescription = "Change category",
-                                    tint = TextMuted,
-                                    modifier = Modifier.padding(start = 4.dp)
+
+                            DropdownMenu(
+                                expanded = showCategoryMenu,
+                                onDismissRequest = { showCategoryMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("PUSH Workout", color = BluePrimary, fontWeight = FontWeight.Bold) },
+                                    onClick = {
+                                        viewModel.loadOrGenerateActiveWorkout("PUSH")
+                                        showCategoryMenu = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("PULL Workout", color = GreenSuccess, fontWeight = FontWeight.Bold) },
+                                    onClick = {
+                                        viewModel.loadOrGenerateActiveWorkout("PULL")
+                                        showCategoryMenu = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("LOWER BODY Workout", color = GoldPR, fontWeight = FontWeight.Bold) },
+                                    onClick = {
+                                        viewModel.loadOrGenerateActiveWorkout("LOWER_BODY")
+                                        showCategoryMenu = false
+                                    }
                                 )
                             }
                         }
-                        
-                        DropdownMenu(
-                            expanded = showCategoryMenu,
-                            onDismissRequest = { showCategoryMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("PUSH Workout", color = BluePrimary, fontWeight = FontWeight.Bold) },
-                                onClick = {
-                                    viewModel.loadOrGenerateActiveWorkout("PUSH")
-                                    showCategoryMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("PULL Workout", color = GreenSuccess, fontWeight = FontWeight.Bold) },
-                                onClick = {
-                                    viewModel.loadOrGenerateActiveWorkout("PULL")
-                                    showCategoryMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("LOWER BODY Workout", color = GoldPR, fontWeight = FontWeight.Bold) },
-                                onClick = {
-                                    viewModel.loadOrGenerateActiveWorkout("LOWER_BODY")
-                                    showCategoryMenu = false
-                                }
-                            )
+
+                        if (!isStarted) {
+                            IconButton(onClick = { viewModel.shuffleActiveWorkout() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Shuffle workout",
+                                    tint = TextMuted
+                                )
+                            }
                         }
                     }
                 }
@@ -274,8 +287,11 @@ fun WorkoutScreen(
                                     }
                                     Box(modifier = Modifier.width(1.dp).height(24.dp).background(BorderLight))
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("Active sets", fontSize = 11.sp, color = TextMuted)
-                                        Text("$totalSetsCount sets", fontWeight = FontWeight.Bold, color = TextDark)
+                                        val setsLeftCount = remember(exercises) {
+                                            exercises.flatMap { it.sets }.count { !it.isCompleted }
+                                        }
+                                        Text("Sets left", fontSize = 11.sp, color = TextMuted)
+                                        Text("$setsLeftCount sets", fontWeight = FontWeight.Bold, color = TextDark)
                                     }
                                 }
                             }
@@ -305,6 +321,10 @@ fun WorkoutScreen(
                             onClick = {
                                 viewModel.onExerciseScreenOpened()
                                 selectedExerciseId = exerciseState.exercise.id
+                            },
+                            currentFrequency = exercisePreferences[exerciseState.exercise.id],
+                            onSetFrequency = { freq ->
+                                viewModel.setExerciseFrequency(exerciseState.exercise.id, freq)
                             }
                         )
                     }
@@ -683,7 +703,11 @@ fun WorkoutScreen(
                     selectedExerciseId = null
                 },
                 ownedEquipment = ownedEquipment,
-                usageStats = exerciseUsageStats
+                usageStats = exerciseUsageStats,
+                // Opens straight into the muscle group the exercise being replaced is from;
+                // the user can still switch tabs or pick a different group from there.
+                initialTab = 1,
+                initialMuscleGroup = exercises.find { it.exercise.id == oldId }?.exercise?.bodyPart
             )
         }
 
