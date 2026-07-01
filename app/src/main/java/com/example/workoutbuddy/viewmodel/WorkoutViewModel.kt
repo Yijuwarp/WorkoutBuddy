@@ -43,10 +43,15 @@ private const val LIFT_REPS_RESET = 8
 // Auto-progression: cardio distance/time both scale by this factor each session, holding pace constant.
 private const val CARDIO_PROGRESSION_FACTOR = 1.05
 
-// Muscle group recovery: each completed set adds this much fatigue (on top of decayed
-// leftover fatigue, clamped to 100); recovery drains fatigue at a fixed rate so a fully
-// fatigued (100%) muscle group takes 5 days to fully recover.
-private const val FATIGUE_BUMP_PER_SET = 25.0
+// Muscle group recovery: fatigue per set scales with how hard the set was relative to the
+// user's strength/stamina score. BASE_FATIGUE_BUMP is the bump applied when performance
+// exactly equals the user's score (i.e. a "normal" set). Sets below that score cost less;
+// sets above cost more, clamped between FATIGUE_INTENSITY_MIN and FATIGUE_INTENSITY_MAX
+// so a very easy set still costs something and one extreme set can't fully drain the bar.
+// Recovery drains fatigue at a fixed rate; a fully fatigued muscle takes 5 days to recover.
+private const val BASE_FATIGUE_BUMP = 25.0
+private const val FATIGUE_INTENSITY_MIN = 0.2   // floor: ≥5% bar per set
+private const val FATIGUE_INTENSITY_MAX = 2.0   // ceiling: ≤50% bar per set
 private const val RECOVERY_PCT_PER_DAY = 20.0
 private const val MS_PER_DAY = 86_400_000.0
 
@@ -830,7 +835,7 @@ class WorkoutViewModel(
 
                     reevaluatePRsForExercise(activeId, match.exerciseId)
                     if (isCompleted) {
-                        applyFatigue(state.exercise.bodyPart)
+                        applyFatigue(match, state.exercise)
                     }
                     loadExerciseStatesForWorkout(activeId)
 
@@ -1138,10 +1143,10 @@ class WorkoutViewModel(
                             isCompleted = true
                         )
                         repository.updateWorkoutSet(updatedSet)
-                        
+
                         val activeId = activeWorkout.value?.id ?: return@launch
                         reevaluatePRsForExercise(activeId, match.exerciseId)
-                        applyFatigue(state.exercise.bodyPart)
+                        applyFatigue(updatedSet, state.exercise)
                         loadExerciseStatesForWorkout(activeId)
                         recalculateActiveWorkoutIntensity()
                         triggerCooldown(state.exercise)
@@ -1756,14 +1761,35 @@ class WorkoutViewModel(
     }
 
     /**
-     * Bumps fatigue for every individual muscle a set's exercise.bodyPart maps to (accumulative):
-     * decays whatever fatigue is left from elapsed time since each muscle was last touched, then
-     * adds a fixed per-set bump on top, clamped to 100. Recovery is 20%/day linear, i.e. full
-     * recovery from 100% takes 5 days. A set can hit multiple muscles (e.g. "Chest & Lats").
+     * Bumps fatigue for every individual muscle a set's exercise.bodyPart maps to.
+     * Decays existing fatigue by elapsed time, then adds a dynamic bump scaled by how hard
+     * the set was relative to the user's strength (LIFT/HOLD) or stamina (CARDIO) score.
+     * A set performed exactly at the user's score level adds BASE_FATIGUE_BUMP (25%).
+     * The intensity multiplier is clamped to [FATIGUE_INTENSITY_MIN, FATIGUE_INTENSITY_MAX].
      */
-    private suspend fun applyFatigue(bodyPart: String) {
+    private suspend fun applyFatigue(set: WorkoutSetEntity, exercise: ExerciseEntity) {
         val now = System.currentTimeMillis()
-        for (muscle in muscleGroupsForBodyPart(bodyPart)) {
+        val profile = repository.getUserProfile()
+        val relevantScore = if (exercise.type == "CARDIO") {
+            profile?.staminaScore ?: 100.0
+        } else {
+            profile?.strengthScore ?: 100.0
+        }
+        val perf = calculateSetPerformance(
+            exerciseName = exercise.name,
+            weight = set.weight,
+            reps = set.reps,
+            time = set.time,
+            distance = set.distance,
+            exerciseType = exercise.type,
+            userBodyWeight = profile?.weight ?: 70.0,
+            inclinePct = set.inclinePct
+        )
+        val intensityMultiplier = (perf / relevantScore)
+            .coerceIn(FATIGUE_INTENSITY_MIN, FATIGUE_INTENSITY_MAX)
+        val fatigueBump = BASE_FATIGUE_BUMP * intensityMultiplier
+
+        for (muscle in muscleGroupsForBodyPart(exercise.bodyPart)) {
             val existing = repository.getRecovery(muscle)
             val decayed = if (existing == null) {
                 0.0
@@ -1771,7 +1797,7 @@ class WorkoutViewModel(
                 val elapsedDays = (now - existing.lastUpdatedAt) / MS_PER_DAY
                 (existing.fatiguePct - RECOVERY_PCT_PER_DAY * elapsedDays).coerceAtLeast(0.0)
             }
-            val newFatigue = (decayed + FATIGUE_BUMP_PER_SET).coerceAtMost(100.0)
+            val newFatigue = (decayed + fatigueBump).coerceAtMost(100.0)
             repository.upsertRecovery(MuscleGroupRecoveryEntity(muscle, newFatigue, now))
         }
     }
