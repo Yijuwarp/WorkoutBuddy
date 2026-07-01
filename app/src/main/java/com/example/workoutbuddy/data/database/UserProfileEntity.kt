@@ -17,5 +17,6 @@ data class UserProfileEntity(
     val gymExperience: String = "Beginner",
     val restTimerEnabled: Boolean = true,
     val equipmentOwned: String = Equipment.allIdsCsv, // CSV of Equipment ids the user has access to
-    val difficultyCeiling: String? = null // "EASY"/"MEDIUM"/"HARD"; null = unset, shows first-launch tuning overlay
+    val difficultyCeiling: String? = null, // "EASY"/"MEDIUM"/"HARD"; null = unset, shows first-launch tuning overlay
+    val hasSeenWorkoutTour: Boolean = false // true once the first-open WorkoutScreen coach-mark tour has been completed/skipped
 )

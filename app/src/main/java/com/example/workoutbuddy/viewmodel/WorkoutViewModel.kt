@@ -37,6 +37,53 @@ private const val HIGH_INTENSITY_RATIO_THRESHOLD = 0.65
 private const val MAIN_EXERCISES_PER_WORKOUT = 4
 private const val MAX_EXERCISES_PER_BODY_PART = 2
 
+// Auto-progression: lift reps climb to a cap, then weight steps up and reps reset.
+private const val LIFT_REP_CAP = 12
+private const val LIFT_REPS_RESET = 8
+// Auto-progression: cardio distance/time both scale by this factor each session, holding pace constant.
+private const val CARDIO_PROGRESSION_FACTOR = 1.05
+
+// Muscle group recovery: each completed set adds this much fatigue (on top of decayed
+// leftover fatigue, clamped to 100); recovery drains fatigue at a fixed rate so a fully
+// fatigued (100%) muscle group takes 5 days to fully recover.
+private const val FATIGUE_BUMP_PER_SET = 25.0
+private const val RECOVERY_PCT_PER_DAY = 20.0
+private const val MS_PER_DAY = 86_400_000.0
+
+// Canonical individual muscles the Body tab's Recovery view tracks/displays, in display order.
+val RECOVERY_MUSCLE_GROUPS = listOf(
+    "Chest", "Back", "Shoulders", "Biceps", "Triceps", "Quads", "Hamstrings", "Glutes", "Calves", "Core"
+)
+
+/**
+ * Maps a free-text ExerciseEntity.bodyPart (seed data uses combos like "Chest & Lats" and
+ * qualifiers like "Upper Chest"/"Front Deltoids") onto the canonical muscle list above.
+ * "Cardio" and "Full Body" intentionally map to nothing - they aren't muscle-specific enough
+ * to attribute fatigue to a single group without guessing.
+ */
+private fun muscleGroupsForBodyPart(bodyPart: String): List<String> {
+    val parts = bodyPart.split("&").map { it.trim() }
+    return parts.mapNotNull { part ->
+        when {
+            part.contains("Chest", ignoreCase = true) -> "Chest"
+            part.equals("Back", ignoreCase = true) ||
+                part.equals("Lats", ignoreCase = true) ||
+                part.contains("Traps", ignoreCase = true) -> "Back"
+            part.contains("Deltoid", ignoreCase = true) ||
+                part.equals("Shoulders", ignoreCase = true) -> "Shoulders"
+            part.contains("Biceps", ignoreCase = true) ||
+                part.contains("Brachialis", ignoreCase = true) -> "Biceps"
+            part.contains("Triceps", ignoreCase = true) -> "Triceps"
+            part.contains("Quads", ignoreCase = true) -> "Quads"
+            part.contains("Hamstrings", ignoreCase = true) -> "Hamstrings"
+            part.contains("Glutes", ignoreCase = true) -> "Glutes"
+            part.contains("Calves", ignoreCase = true) -> "Calves"
+            part.equals("Core", ignoreCase = true) -> "Core"
+            else -> null // "Legs" (too ambiguous), "Cardio", "Full Body", or unrecognized
+        }
+    }.distinct()
+}
+
 class WorkoutViewModel(
     application: Application,
     private val repository: WorkoutRepository
@@ -112,6 +159,64 @@ class WorkoutViewModel(
         .map { list -> list.associate { it.exerciseId to com.example.workoutbuddy.data.Frequency.fromName(it.frequency) } }
         .map { it.filterValues { freq -> freq != null }.mapValues { (_, freq) -> freq!! } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    // Raw per-muscle-group fatigue rows (muscleGroup -> entity); the Body tab's Recovery view
+    // computes the live, decayed percentage from these at render time.
+    val muscleGroupRecovery = repository.getAllRecoveryFlow()
+        .map { list -> list.associateBy { it.muscleGroup } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    // Body tab "Results" list: only exercises logged at least once, refreshed on demand
+    // when the Body screen is opened rather than continuously observed.
+    val exerciseResultSummaries = MutableStateFlow<List<ExerciseResultSummary>>(emptyList())
+
+    fun refreshExerciseResultSummaries() {
+        viewModelScope.launch {
+            val loggedIds = repository.getLoggedExerciseIds()
+            val summaries = loggedIds.mapNotNull { exerciseId ->
+                val exercise = repository.getExerciseById(exerciseId) ?: return@mapNotNull null
+                val sets = repository.getCompletedSetsForExerciseOrdered(exerciseId)
+                if (sets.isEmpty()) return@mapNotNull null
+
+                // Per-session "best" metric: weight*reps for lifts, distance for cardio,
+                // time for hold/cardio-by-time, grouped in workout order (oldest first).
+                fun metricFor(set: WorkoutSetEntity): Double = when (exercise.type) {
+                    "LIFT" -> (set.weight ?: 0.0) * (set.reps ?: 0)
+                    "CARDIO" -> set.distance ?: (set.time?.toDouble() ?: 0.0)
+                    else -> set.time?.toDouble() ?: 0.0
+                }
+                val bestPerSession = sets.groupBy { it.workoutId }
+                    .map { (_, sessionSets) -> sessionSets.maxOf { metricFor(it) } }
+
+                val prLabel = when (exercise.type) {
+                    "LIFT" -> {
+                        val best = sets.maxWithOrNull(compareBy<WorkoutSetEntity> { it.weight ?: 0.0 }.thenBy { it.reps ?: 0 })
+                        "${formatDecimal(best?.weight ?: 0.0)} kg x ${best?.reps ?: 0}"
+                    }
+                    "CARDIO" -> {
+                        val best = sets.maxByOrNull { it.distance ?: 0.0 }
+                        if ((best?.distance ?: 0.0) > 0.0) "${formatDecimal(best?.distance ?: 0.0)} km"
+                        else formatTime(sets.maxOf { it.time ?: 0 })
+                    }
+                    else -> formatTime(sets.maxOf { it.time ?: 0 })
+                }
+
+                val recent = bestPerSession.takeLast(3)
+                val trend = if (recent.size < 2) {
+                    ExerciseTrend.FLAT
+                } else if (recent.last() > recent.first()) {
+                    ExerciseTrend.UP
+                } else if (recent.last() < recent.first()) {
+                    ExerciseTrend.DOWN
+                } else {
+                    ExerciseTrend.FLAT
+                }
+
+                ExerciseResultSummary(exerciseId, exercise.name, prLabel, trend)
+            }
+            exerciseResultSummaries.value = summaries
+        }
+    }
 
     private fun refreshExerciseUsageStats() {
         viewModelScope.launch {
@@ -254,18 +359,31 @@ class WorkoutViewModel(
 
                 when (exercise.type) {
                     "LIFT" -> {
-                        val bestSet = repository.getBestSetForExercise(exerciseId)
-                        if (bestSet != null) {
-                            recWeight = bestSet.weight
-                            recReps = bestSet.reps
+                        // Progress from the most recently logged set, not the all-time best,
+                        // so the recommendation compounds week over week instead of reverting
+                        // to an old peak.
+                        val lastSet = prevSets.maxWithOrNull(
+                            compareBy<WorkoutSetEntity> { it.weight ?: 0.0 }.thenBy { it.reps ?: 0 }
+                        )
+                        if (lastSet?.weight != null && lastSet.reps != null) {
+                            val (nextWeight, nextReps) = progressLift(lastSet.weight, lastSet.reps)
+                            recWeight = nextWeight
+                            recReps = nextReps
                         } else {
                             recWeight = getAdaptiveStartWeight(exercise.name, strengthScore, bodyWeight)
                             recReps = 10
                         }
                     }
                     "CARDIO" -> {
-                        recTime = prevSets.firstOrNull()?.time ?: getStandardStartDuration(exercise.name, staminaScore)
-                        recDistance = if (exercise.name.contains("Jump Rope", ignoreCase = true)) null else (prevSets.firstOrNull()?.distance ?: getStandardStartDistance(exercise.name, staminaScore))
+                        val lastSet = prevSets.firstOrNull()
+                        if (lastSet != null) {
+                            val (nextDistance, nextTime) = progressCardio(lastSet.distance, lastSet.time ?: 0)
+                            recTime = nextTime
+                            recDistance = if (exercise.name.contains("Jump Rope", ignoreCase = true)) null else nextDistance
+                        } else {
+                            recTime = getStandardStartDuration(exercise.name, staminaScore)
+                            recDistance = if (exercise.name.contains("Jump Rope", ignoreCase = true)) null else getStandardStartDistance(exercise.name, staminaScore)
+                        }
                     }
                     "HOLD" -> {
                         recTime = prevSets.firstOrNull()?.time ?: 60
@@ -286,6 +404,31 @@ class WorkoutViewModel(
             }
         }
         repository.insertWorkoutSets(setsToInsert)
+    }
+
+    /**
+     * Steps a lift exercise's recommendation forward from its most recently logged set:
+     * reps increase by 1 each session up to a cap of 12, then the weight steps up by one
+     * plate increment (2.5kg) and reps reset to a fixed starting value (8).
+     */
+    private fun progressLift(lastWeight: Double, lastReps: Int): Pair<Double, Int> {
+        return if (lastReps < LIFT_REP_CAP) {
+            lastWeight to (lastReps + 1)
+        } else {
+            nextWeightIncrement(lastWeight) to LIFT_REPS_RESET
+        }
+    }
+
+    private fun nextWeightIncrement(weight: Double): Double = weight + 2.5
+
+    /**
+     * Steps a cardio exercise's recommendation forward by a flat 5% increase to both
+     * distance and time, which holds pace constant since both scale by the same factor.
+     */
+    private fun progressCardio(lastDistance: Double?, lastTime: Int): Pair<Double?, Int> {
+        val nextDistance = lastDistance?.let { it * CARDIO_PROGRESSION_FACTOR }
+        val nextTime = Math.round(lastTime * CARDIO_PROGRESSION_FACTOR).toInt()
+        return nextDistance to nextTime
     }
 
     /**
@@ -686,6 +829,9 @@ class WorkoutViewModel(
                     } else null
 
                     reevaluatePRsForExercise(activeId, match.exerciseId)
+                    if (isCompleted) {
+                        applyFatigue(state.exercise.bodyPart)
+                    }
                     loadExerciseStatesForWorkout(activeId)
 
                     var exerciseCompletedNow = false
@@ -995,6 +1141,7 @@ class WorkoutViewModel(
                         
                         val activeId = activeWorkout.value?.id ?: return@launch
                         reevaluatePRsForExercise(activeId, match.exerciseId)
+                        applyFatigue(state.exercise.bodyPart)
                         loadExerciseStatesForWorkout(activeId)
                         recalculateActiveWorkoutIntensity()
                         triggerCooldown(state.exercise)
@@ -1608,6 +1755,27 @@ class WorkoutViewModel(
         }
     }
 
+    /**
+     * Bumps fatigue for every individual muscle a set's exercise.bodyPart maps to (accumulative):
+     * decays whatever fatigue is left from elapsed time since each muscle was last touched, then
+     * adds a fixed per-set bump on top, clamped to 100. Recovery is 20%/day linear, i.e. full
+     * recovery from 100% takes 5 days. A set can hit multiple muscles (e.g. "Chest & Lats").
+     */
+    private suspend fun applyFatigue(bodyPart: String) {
+        val now = System.currentTimeMillis()
+        for (muscle in muscleGroupsForBodyPart(bodyPart)) {
+            val existing = repository.getRecovery(muscle)
+            val decayed = if (existing == null) {
+                0.0
+            } else {
+                val elapsedDays = (now - existing.lastUpdatedAt) / MS_PER_DAY
+                (existing.fatiguePct - RECOVERY_PCT_PER_DAY * elapsedDays).coerceAtLeast(0.0)
+            }
+            val newFatigue = (decayed + FATIGUE_BUMP_PER_SET).coerceAtMost(100.0)
+            repository.upsertRecovery(MuscleGroupRecoveryEntity(muscle, newFatigue, now))
+        }
+    }
+
     private suspend fun reevaluatePRsForExercise(workoutId: Long, exerciseId: Int) {
         val exercise = repository.getExerciseById(exerciseId) ?: return
         val sets = repository.getSetsForWorkout(workoutId).filter { it.exerciseId == exerciseId }
@@ -1617,10 +1785,9 @@ class WorkoutViewModel(
             "LIFT" -> {
                 val currentBestSet = completedSets.maxWithOrNull(compareBy<WorkoutSetEntity> { it.weight ?: 0.0 }.thenBy { it.reps ?: 0 })
                 val pastBestSet = repository.getBestSetForExercise(exerciseId)
-                val hasNewPR = if (currentBestSet == null) {
+                val hasNewPR = if (currentBestSet == null || pastBestSet == null) {
+                    // No prior history for this exercise: nothing to break yet.
                     false
-                } else if (pastBestSet == null) {
-                    true
                 } else {
                     val currentWeight = currentBestSet.weight ?: 0.0
                     val pastWeight = pastBestSet.weight ?: 0.0
@@ -1651,11 +1818,12 @@ class WorkoutViewModel(
                 if (exercise.name.contains("Jump Rope", ignoreCase = true)) {
                     val maxTime = completedSets.mapNotNull { it.time }.maxOrNull() ?: 0
                     val pastBestTime = repository.getBestTimeForExercise(exerciseId) ?: 0
-                    val hasNewPR = maxTime > pastBestTime
-                    
-                    val isBrokenRecord = pastBestTime > 0 && maxTime > pastBestTime
+                    // No prior history (pastBestTime == 0) means nothing to break yet.
+                    val hasNewPR = pastBestTime > 0 && maxTime > pastBestTime
+
+                    val isBrokenRecord = hasNewPR
                     val firstPRSet = if (hasNewPR) completedSets.firstOrNull { it.time == maxTime } else null
-                    
+
                     if (isBrokenRecord && firstPRSet != null && !firstPRSet.isPR) {
                         val freshOldRec = formatTime(pastBestTime)
                         val newRec = formatTime(maxTime)
@@ -1679,10 +1847,9 @@ class WorkoutViewModel(
                             .thenBy { -(it.time ?: Int.MAX_VALUE) }
                     )
                     val pastBestSet = repository.getBestDistanceSetForExercise(exerciseId)
-                    val hasNewPR = if (currentBestSet == null) {
+                    val hasNewPR = if (currentBestSet == null || pastBestSet == null) {
+                        // No prior history for this exercise: nothing to break yet.
                         false
-                    } else if (pastBestSet == null) {
-                        true
                     } else {
                         val currentDist = currentBestSet.distance ?: 0.0
                         val pastDist = pastBestSet.distance ?: 0.0
@@ -1716,9 +1883,10 @@ class WorkoutViewModel(
             "HOLD" -> {
                 val maxTime = completedSets.mapNotNull { it.time }.maxOrNull() ?: 0
                 val pastBestTime = repository.getBestTimeForExercise(exerciseId) ?: 0
-                val hasNewPR = maxTime > pastBestTime
-                
-                val isBrokenRecord = pastBestTime > 0 && maxTime > pastBestTime
+                // No prior history (pastBestTime == 0) means nothing to break yet.
+                val hasNewPR = pastBestTime > 0 && maxTime > pastBestTime
+
+                val isBrokenRecord = hasNewPR
                 val firstPRSet = if (hasNewPR) completedSets.firstOrNull { it.time == maxTime } else null
                 
                 if (isBrokenRecord && firstPRSet != null && !firstPRSet.isPR) {
@@ -1767,6 +1935,16 @@ class WorkoutViewModel(
         // naming, decoupled from onboarding's Beginner/Intermediate/Expert terms. Bands widen
         // at higher tiers since climbing from Master to Legend should take meaningfully longer
         // than Bronze to Silver.
+        // Computes a muscle group's current recovery % (0 = fully fatigued, 100 = fully
+        // recovered) on read, decaying the stored fatiguePct by RECOVERY_PCT_PER_DAY for
+        // elapsed time since lastUpdatedAt. No entity (never trained) means fully recovered.
+        fun currentRecoveryPct(entity: MuscleGroupRecoveryEntity?, now: Long = System.currentTimeMillis()): Double {
+            if (entity == null) return 100.0
+            val elapsedDays = (now - entity.lastUpdatedAt) / MS_PER_DAY
+            val decayedFatigue = (entity.fatiguePct - RECOVERY_PCT_PER_DAY * elapsedDays).coerceIn(0.0, 100.0)
+            return 100.0 - decayedFatigue
+        }
+
         fun deriveRankTier(strengthScore: Double, staminaScore: Double): String {
             val avg = (strengthScore + staminaScore) / 2.0
             return when {
@@ -2028,6 +2206,14 @@ class WorkoutViewModel(
         viewModelScope.launch {
             val currentProfile = repository.getUserProfile() ?: return@launch
             val updatedProfile = currentProfile.copy(restTimerEnabled = enabled)
+            repository.saveUserProfile(updatedProfile)
+        }
+    }
+
+    fun markWorkoutTourSeen() {
+        viewModelScope.launch {
+            val currentProfile = repository.getUserProfile() ?: return@launch
+            val updatedProfile = currentProfile.copy(hasSeenWorkoutTour = true)
             repository.saveUserProfile(updatedProfile)
         }
     }
@@ -2401,6 +2587,17 @@ data class RecordBrokenState(
     val exerciseName: String,
     val oldRecord: String,
     val newRecord: String
+)
+
+enum class ExerciseTrend { UP, FLAT, DOWN }
+
+// Body tab "Results" row: an exercise the user has logged at least once, with its current
+// PR and a trend across the last few sessions.
+data class ExerciseResultSummary(
+    val exerciseId: Int,
+    val name: String,
+    val prLabel: String,
+    val trend: ExerciseTrend
 )
 
 // State classes

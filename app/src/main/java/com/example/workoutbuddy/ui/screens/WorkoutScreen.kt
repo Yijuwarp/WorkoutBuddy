@@ -22,8 +22,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -79,6 +83,13 @@ fun WorkoutScreen(
     var showCountdownModal by remember { mutableStateOf(false) }
     var showIncompleteWarning by remember { mutableStateOf(false) }
 
+    // First-open coach-mark tour state
+    var tourStep by remember { mutableStateOf(0) }
+    var categoryBadgeBounds by remember { mutableStateOf<Rect?>(null) }
+    var refreshButtonBounds by remember { mutableStateOf<Rect?>(null) }
+    var dialsBounds by remember { mutableStateOf<Rect?>(null) }
+    val showTour = userProfileForEquipment?.hasSeenWorkoutTour == false && activeWorkout != null && !isStarted
+
     LaunchedEffect(cooldownExercise) {
         if (cooldownExercise != null) {
             showRestModal = true
@@ -99,8 +110,19 @@ fun WorkoutScreen(
         exercises.find { it.exercise.id == selectedExerciseId }
     }
 
+    // Root of this screen's own coordinate space - anchor bounds are captured in window
+    // coordinates, but the overlay is laid out relative to this Box (which may itself be
+    // offset from the window origin by Scaffold/status-bar padding), so anchors must be
+    // translated into this Box's local space before being used to position the highlight.
+    var screenRootBounds by remember { mutableStateOf<Rect?>(null) }
+
     WavyFloatingNumbersContainer(viewModel = viewModel) {
-        Box(modifier = modifier.fillMaxSize().imePadding()) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .imePadding()
+                .onGloballyPositioned { screenRootBounds = it.boundsInWindow() }
+        ) {
             Column(modifier = Modifier.fillMaxSize()) {
             
             // Header Bar
@@ -118,7 +140,9 @@ fun WorkoutScreen(
                         Column {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable { if (!isStarted) showCategoryMenu = true }
+                                modifier = Modifier
+                                    .clickable { if (!isStarted) showCategoryMenu = true }
+                                    .onGloballyPositioned { categoryBadgeBounds = it.boundsInWindow() }
                             ) {
                                 val badgeColor = when (workout.category) {
                                     "PUSH" -> BluePrimary
@@ -170,7 +194,10 @@ fun WorkoutScreen(
                         }
 
                         if (!isStarted) {
-                            IconButton(onClick = { viewModel.shuffleActiveWorkout() }) {
+                            IconButton(
+                                onClick = { viewModel.shuffleActiveWorkout() },
+                                modifier = Modifier.onGloballyPositioned { refreshButtonBounds = it.boundsInWindow() }
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.Refresh,
                                     contentDescription = "Shuffle workout",
@@ -254,7 +281,8 @@ fun WorkoutScreen(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 12.dp),
+                                        .padding(vertical = 12.dp)
+                                        .onGloballyPositioned { dialsBounds = it.boundsInWindow() },
                                     horizontalArrangement = Arrangement.SpaceEvenly,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -760,8 +788,136 @@ fun WorkoutScreen(
                 }
             )
         }
+
+        // First-open coach-mark tour, shown once until completed/skipped
+        if (showTour) {
+            WorkoutTourOverlay(
+                step = tourStep,
+                categoryBounds = relativeTo(categoryBadgeBounds, screenRootBounds),
+                refreshBounds = relativeTo(refreshButtonBounds, screenRootBounds),
+                dialsBounds = relativeTo(dialsBounds, screenRootBounds),
+                onNext = {
+                    if (tourStep < 3) {
+                        tourStep += 1
+                    } else {
+                        viewModel.markWorkoutTourSeen()
+                    }
+                },
+                onSkip = { viewModel.markWorkoutTourSeen() }
+            )
+        }
     }
 }
+}
+
+// Translates a window-space anchor rect into the coordinate space of the screen's own root
+// Box, since the overlay is laid out relative to that root (which is itself offset from the
+// window origin by Scaffold/status-bar/IME padding).
+private fun relativeTo(anchor: Rect?, root: Rect?): Rect? {
+    if (anchor == null || root == null) return null
+    return Rect(
+        left = anchor.left - root.left,
+        top = anchor.top - root.top,
+        right = anchor.right - root.left,
+        bottom = anchor.bottom - root.top
+    )
+}
+
+@Composable
+private fun WorkoutTourOverlay(
+    step: Int,
+    categoryBounds: Rect?,
+    refreshBounds: Rect?,
+    dialsBounds: Rect?,
+    onNext: () -> Unit,
+    onSkip: () -> Unit
+) {
+    val density = LocalDensity.current
+    val anchor = when (step) {
+        0 -> categoryBounds
+        1 -> refreshBounds
+        2 -> dialsBounds
+        else -> null
+    }
+    val message = when (step) {
+        0 -> "Switch muscle group here."
+        1 -> "Don't like this set? Refresh for a new one."
+        2 -> "These track your performance and calories burned during the workout."
+        else -> "We've set up your first workout — hit Start Workout when you're ready."
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.65f))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { /* swallow taps behind the tour */ }
+        )
+
+        if (anchor != null) {
+            Box(
+                modifier = Modifier
+                    .offset(
+                        x = with(density) { anchor.left.toDp() } - 6.dp,
+                        y = with(density) { anchor.top.toDp() } - 6.dp
+                    )
+                    .size(
+                        width = with(density) { anchor.width.toDp() } + 12.dp,
+                        height = with(density) { anchor.height.toDp() } + 12.dp
+                    )
+                    .border(2.dp, BluePrimary, MaterialTheme.shapes.medium)
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (anchor != null) Modifier.padding(top = with(density) { anchor.bottom.toDp() } + 16.dp)
+                    else Modifier
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = if (anchor == null) Arrangement.Center else Arrangement.Top
+        ) {
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .widthIn(max = 320.dp),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = message,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (step < 3) {
+                            TextButton(onClick = onSkip) { Text("Skip") }
+                        }
+                        Button(
+                            onClick = onNext,
+                            colors = ButtonDefaults.buttonColors(containerColor = BluePrimary)
+                        ) {
+                            Text(if (step < 3) "Next" else "Got it")
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // --- Workout Summary Dialog ---
@@ -855,31 +1011,35 @@ fun WorkoutSummaryDialog(
                             subtext = "Burned",
                             modifier = Modifier.weight(1f)
                         )
-                        // Steps card
-                        StatBox(
-                            value = "$animatedSteps",
-                            label = "steps",
-                            subtext = "Moved",
-                            modifier = Modifier.weight(1f)
-                        )
+                        // Steps card (hidden when no steps were recorded)
+                        if (summary.totalSteps > 0) {
+                            StatBox(
+                                value = "$animatedSteps",
+                                label = "steps",
+                                subtext = "Moved",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // PRs card
-                        StatBox(
-                            value = "$animatedPrCount",
-                            label = "Records",
-                            subtext = "Broken",
-                            modifier = Modifier.weight(1f),
-                            highlight = true
-                        )
+                        // PRs card (hidden when no records were broken)
+                        if (summary.prCount > 0) {
+                            StatBox(
+                                value = "$animatedPrCount",
+                                label = "Records",
+                                subtext = "Broken",
+                                modifier = Modifier.weight(1f),
+                                highlight = true
+                            )
+                        }
                         // Volume card
                         StatBox(
                             value = "$animatedVolume",
                             label = "kg",
-                            subtext = "Volume",
+                            subtext = "Lifted",
                             modifier = Modifier.weight(1f)
                         )
                     }

@@ -134,4 +134,24 @@ interface WorkoutDao {
 
     @Query("DELETE FROM equipment_presets WHERE id = :id")
     fun deleteEquipmentPreset(id: Int)
+
+    // Muscle Group Recovery Queries
+    @Query("SELECT * FROM muscle_group_recovery")
+    fun getAllRecoveryFlow(): Flow<List<MuscleGroupRecoveryEntity>>
+
+    @Query("SELECT * FROM muscle_group_recovery WHERE muscleGroup = :muscleGroup")
+    fun getRecovery(muscleGroup: String): MuscleGroupRecoveryEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertRecovery(recovery: MuscleGroupRecoveryEntity)
+
+    // Distinct exercises the user has logged at least one completed set for, used by the Body
+    // tab's Results list to only show exercises that "have been done."
+    @Query("SELECT DISTINCT s.exerciseId FROM workout_sets s INNER JOIN workouts w ON s.workoutId = w.id WHERE s.isCompleted = 1 AND w.isCompleted = 1")
+    fun getLoggedExerciseIds(): List<Int>
+
+    // All completed sets for an exercise, oldest workout first, used to derive a trend
+    // (best-per-session across the last few sessions) for the Body tab's Results list.
+    @Query("SELECT s.* FROM workout_sets s INNER JOIN workouts w ON s.workoutId = w.id WHERE s.exerciseId = :exerciseId AND s.isCompleted = 1 AND w.isCompleted = 1 ORDER BY w.date ASC, s.id ASC")
+    fun getCompletedSetsForExerciseOrdered(exerciseId: Int): List<WorkoutSetEntity>
 }

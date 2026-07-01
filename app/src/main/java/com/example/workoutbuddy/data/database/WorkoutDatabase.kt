@@ -14,9 +14,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WorkoutSetEntity::class,
         UserProfileEntity::class,
         ExercisePreferenceEntity::class,
-        EquipmentPresetEntity::class
+        EquipmentPresetEntity::class,
+        MuscleGroupRecoveryEntity::class
     ],
-    version = 17,
+    version = 19,
     exportSchema = false
 )
 abstract class WorkoutDatabase : RoomDatabase() {
@@ -63,6 +64,28 @@ abstract class WorkoutDatabase : RoomDatabase() {
             }
         }
 
+        // Adds hasSeenWorkoutTour, gating the one-time first-open WorkoutScreen coach-mark tour.
+        // Existing profiles default to false (column default), which is fine since they've
+        // already passed onboarding and don't need the tour retroactively.
+        private val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_profile ADD COLUMN hasSeenWorkoutTour INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        // Adds muscle_group_recovery for the Body tab's per-muscle-group fatigue bars.
+        // No seed/backfill needed - absence of a row means fully recovered.
+        private val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS muscle_group_recovery (" +
+                        "muscleGroup TEXT NOT NULL PRIMARY KEY, " +
+                        "fatiguePct REAL NOT NULL, " +
+                        "lastUpdatedAt INTEGER NOT NULL)"
+                )
+            }
+        }
+
         fun getDatabase(context: Context): WorkoutDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -70,7 +93,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
                     WorkoutDatabase::class.java,
                     "workout_database"
                 )
-                .addMigrations(MIGRATION_15_16, MIGRATION_16_17)
+                .addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

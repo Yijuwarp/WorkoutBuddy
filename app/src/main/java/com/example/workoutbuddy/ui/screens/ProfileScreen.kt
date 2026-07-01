@@ -102,114 +102,12 @@ fun ProfileScreen(
 
         profileState?.let { p ->
             // --- Premium Scores Card ---
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                shape = MaterialTheme.shapes.extraLarge,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Rank badge + name on the left
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val rankTier = WorkoutViewModel.deriveRankTier(p.strengthScore, p.staminaScore)
-                        Image(
-                            painter = painterResource(id = WorkoutViewModel.rankBadgeRes(rankTier)),
-                            contentDescription = "$rankTier rank badge",
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = p.nickname,
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                                color = TextDark
-                            )
-                            Text(
-                                text = "Level: $rankTier",
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                color = TextMuted
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    // 2 Scores on the right
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Strength Score Group
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(CircleShape)
-                                    .background(RedDangerBg),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "${p.strengthScore.toInt()}",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = RedDangerLight,
-                                    lineHeight = 24.sp
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "STRENGTH",
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextMuted,
-                                letterSpacing = 0.5.sp
-                            )
-                        }
-
-                        // Stamina Score Group
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(CircleShape)
-                                    .background(AmberWarningBgLight),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "${p.staminaScore.toInt()}",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = AmberWarning,
-                                    lineHeight = 24.sp
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "STAMINA",
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextMuted,
-                                letterSpacing = 0.5.sp
-                            )
-                        }
-                    }
-                }
-            }
+            ProfileScoresCard(
+                nickname = p.nickname,
+                strengthScore = p.strengthScore,
+                staminaScore = p.staminaScore,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
 
             // --- Profile Form Details ---
             Text(
@@ -387,7 +285,7 @@ fun ProfileScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Rest Timers", fontWeight = FontWeight.Bold, color = TextDark, fontSize = 14.sp)
                         Text(
-                            "Automatically start a rest timer after each completed set",
+                            "Auto-start a rest timer after each set",
                             color = TextMuted,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 2.dp)
@@ -418,7 +316,7 @@ fun ProfileScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Equipment", fontWeight = FontWeight.Bold, color = TextDark, fontSize = 14.sp)
                         Text(
-                            "Choose what you have access to so workouts only use it",
+                            "Only show workouts using gear you own",
                             color = TextMuted,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 2.dp)
@@ -462,7 +360,7 @@ fun ProfileScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Manage Exercises", fontWeight = FontWeight.Bold, color = TextDark, fontSize = 14.sp)
                         Text(
-                            "Tell us which exercises you want to see more or less of",
+                            "Show more or less of specific exercises",
                             color = TextMuted,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 2.dp)
@@ -539,6 +437,125 @@ fun ProfileScreen(
                     ) {
                         Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Rank badge, nickname, and strength/stamina score circles. Shared between [ProfileScreen]
+ * and the Body tab's Results view so both render the same "who am I" header.
+ */
+@Composable
+fun ProfileScoresCard(
+    nickname: String,
+    strengthScore: Double,
+    staminaScore: Double,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Rank badge + name on the left
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val rankTier = WorkoutViewModel.deriveRankTier(strengthScore, staminaScore)
+                Image(
+                    painter = painterResource(id = WorkoutViewModel.rankBadgeRes(rankTier)),
+                    contentDescription = "$rankTier rank badge",
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = nickname,
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                        color = TextDark
+                    )
+                    Text(
+                        text = "Level: $rankTier",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        color = TextMuted
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // 2 Scores on the right
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Strength Score Group
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(RedDangerBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${strengthScore.toInt()}",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            color = RedDangerLight,
+                            lineHeight = 24.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "STRENGTH",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextMuted,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                // Stamina Score Group
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(AmberWarningBgLight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${staminaScore.toInt()}",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            color = AmberWarning,
+                            lineHeight = 24.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "STAMINA",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextMuted,
+                        letterSpacing = 0.5.sp
+                    )
                 }
             }
         }

@@ -160,4 +160,22 @@ class WorkoutRepository(private val workoutDao: WorkoutDao) {
     suspend fun deleteEquipmentPreset(id: Int) = withContext(Dispatchers.IO) {
         workoutDao.deleteEquipmentPreset(id)
     }
+
+    fun getAllRecoveryFlow(): Flow<List<MuscleGroupRecoveryEntity>> = workoutDao.getAllRecoveryFlow()
+
+    suspend fun getRecovery(muscleGroup: String): MuscleGroupRecoveryEntity? = withContext(Dispatchers.IO) {
+        workoutDao.getRecovery(muscleGroup)
+    }
+
+    suspend fun upsertRecovery(recovery: MuscleGroupRecoveryEntity) = withContext(Dispatchers.IO) {
+        workoutDao.upsertRecovery(recovery)
+    }
+
+    suspend fun getLoggedExerciseIds(): List<Int> = withContext(Dispatchers.IO) {
+        workoutDao.getLoggedExerciseIds()
+    }
+
+    suspend fun getCompletedSetsForExerciseOrdered(exerciseId: Int): List<WorkoutSetEntity> = withContext(Dispatchers.IO) {
+        workoutDao.getCompletedSetsForExerciseOrdered(exerciseId)
+    }
 }

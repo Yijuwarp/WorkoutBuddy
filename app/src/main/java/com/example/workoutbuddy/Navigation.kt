@@ -12,11 +12,13 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.example.workoutbuddy.ui.screens.BodyScreen
 import com.example.workoutbuddy.ui.screens.LogScreen
 import com.example.workoutbuddy.ui.screens.WorkoutScreen
 import com.example.workoutbuddy.ui.screens.OnboardingScreen
@@ -24,7 +26,7 @@ import com.example.workoutbuddy.ui.screens.ProfileScreen
 import com.example.workoutbuddy.viewmodel.WorkoutViewModel
 
 enum class WorkoutTab {
-    WORKOUT, LOG, PROFILE
+    WORKOUT, BODY, LOG, PROFILE
 }
 
 @Composable
@@ -71,6 +73,12 @@ fun MainNavigation(viewModel: WorkoutViewModel) {
                         icon = { Icon(Icons.Default.PlayArrow, contentDescription = "Active Workout") }
                     )
                     NavigationBarItem(
+                        selected = currentTab == WorkoutTab.BODY,
+                        onClick = { currentTab = WorkoutTab.BODY },
+                        label = { Text("Body") },
+                        icon = { Icon(Icons.Default.MonitorHeart, contentDescription = "Body") }
+                    )
+                    NavigationBarItem(
                         selected = currentTab == WorkoutTab.LOG,
                         onClick = { currentTab = WorkoutTab.LOG },
                         label = { Text("Log") },
@@ -92,6 +100,7 @@ fun MainNavigation(viewModel: WorkoutViewModel) {
             ) {
                 when (currentTab) {
                     WorkoutTab.WORKOUT -> WorkoutScreen(viewModel = viewModel)
+                    WorkoutTab.BODY -> BodyScreen(viewModel = viewModel)
                     WorkoutTab.LOG -> LogScreen(viewModel = viewModel)
                     WorkoutTab.PROFILE -> ProfileScreen(viewModel = viewModel)
                 }
