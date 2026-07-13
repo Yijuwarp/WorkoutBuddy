@@ -60,7 +60,8 @@ fun OnboardingScreen(
 
     // User Form State
     var nickname by remember { mutableStateOf("") }
-    var gender by remember { mutableStateOf("Male") }
+    // Empty until the user picks — gender is required and Next is gated on it.
+    var gender by remember { mutableStateOf("") }
     var age by remember { mutableStateOf(35) }
     var height by remember { mutableStateOf(178.0) }
     var weight by remember { mutableStateOf(78.0) }
@@ -229,14 +230,16 @@ fun OnboardingScreen(
                     val nextButtonContent: @Composable RowScope.() -> Unit = {
                         Text("Next", fontWeight = FontWeight.Bold, color = Color.White)
                     }
+                    val nextEnabled = when (step) {
+                        1 -> nickname.isNotBlank()
+                        2 -> gender.isNotEmpty()
+                        else -> true
+                    }
                     val onNextClick: () -> Unit = {
-                        if (step == 1 && nickname.isBlank()) {
-                            // Highlight or alert
-                        } else {
+                        if (nextEnabled) {
                             step++
                         }
                     }
-                    val nextEnabled = step != 1 || nickname.isNotBlank()
                     val nextColors = ButtonDefaults.buttonColors(
                         containerColor = BluePrimary,
                         disabledContainerColor = Color.White.copy(alpha = 0.1f)

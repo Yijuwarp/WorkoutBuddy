@@ -1757,6 +1757,16 @@ class WorkoutViewModel(
         val oldRecord = celebrationBaselineForExercise.getOrPut(key) { freshOldRecord }
         if (!alreadyCelebrated) {
             recordBrokenCelebration.value = RecordBrokenState(exerciseName, oldRecord, newRecord)
+        } else {
+            // The record improved again before the pending celebration was shown/dismissed
+            // (e.g. the set was completed at its recommended value, then the user edited in
+            // the real distance/weight). Refresh the displayed value in place — the dialog
+            // is not re-popped once dismissed, and the baseline old record stays fixed.
+            recordBrokenCelebration.value?.let { pending ->
+                if (pending.exerciseName == exerciseName) {
+                    recordBrokenCelebration.value = pending.copy(newRecord = newRecord)
+                }
+            }
         }
     }
 
@@ -1822,11 +1832,11 @@ class WorkoutViewModel(
                     currentWeight > pastWeight || (currentWeight == pastWeight && currentReps > pastReps)
                 }
                 
-                val isBrokenRecord = currentBestSet != null && pastBestSet != null && !currentBestSet.isPR && (
-                    (currentBestSet.weight ?: 0.0) > (pastBestSet.weight ?: 0.0) ||
-                    ((currentBestSet.weight ?: 0.0) == (pastBestSet.weight ?: 0.0) && (currentBestSet.reps ?: 0) > (pastBestSet.reps ?: 0))
-                )
-                if (isBrokenRecord && currentBestSet != null && pastBestSet != null) {
+                // No !isPR guard here: a set edited after it was already flagged as the PR
+                // (e.g. completed at its recommended value, then corrected) must still reach
+                // celebrateRecordBroken so the pending dialog shows the corrected value.
+                // Repeat-pop protection lives in celebrateRecordBroken's per-workout latch.
+                if (hasNewPR && currentBestSet != null && pastBestSet != null) {
                     val freshOldRec = "${formatDecimal(pastBestSet.weight ?: 0.0)} kg x ${pastBestSet.reps ?: 0}"
                     val newRec = "${formatDecimal(currentBestSet.weight ?: 0.0)} kg x ${currentBestSet.reps ?: 0}"
                     celebrateRecordBroken(workoutId, exerciseId, exercise.name, freshOldRec, newRec)
@@ -1850,7 +1860,7 @@ class WorkoutViewModel(
                     val isBrokenRecord = hasNewPR
                     val firstPRSet = if (hasNewPR) completedSets.firstOrNull { it.time == maxTime } else null
 
-                    if (isBrokenRecord && firstPRSet != null && !firstPRSet.isPR) {
+                    if (isBrokenRecord && firstPRSet != null) {
                         val freshOldRec = formatTime(pastBestTime)
                         val newRec = formatTime(maxTime)
                         celebrateRecordBroken(workoutId, exerciseId, exercise.name, freshOldRec, newRec)
@@ -1888,8 +1898,8 @@ class WorkoutViewModel(
                             (currentDist == pastDist && currentIncl == pastIncl && currentTime < pastTime)
                     }
 
-                    val isBrokenRecord = currentBestSet != null && pastBestSet != null && !currentBestSet.isPR && hasNewPR
-                    if (isBrokenRecord && currentBestSet != null && pastBestSet != null) {
+                    // No !isPR guard — see the LIFT branch note; the celebrate latch dedupes.
+                    if (hasNewPR && currentBestSet != null && pastBestSet != null) {
                         val oldIncl = if ((pastBestSet.inclinePct ?: 0.0) > 0.0) " at ${formatDecimal(pastBestSet.inclinePct ?: 0.0)}%" else ""
                         val newIncl = if ((currentBestSet.inclinePct ?: 0.0) > 0.0) " at ${formatDecimal(currentBestSet.inclinePct ?: 0.0)}%" else ""
                         val freshOldRec = "${formatDecimal(pastBestSet.distance ?: 0.0)} km$oldIncl"
@@ -1915,7 +1925,7 @@ class WorkoutViewModel(
                 val isBrokenRecord = hasNewPR
                 val firstPRSet = if (hasNewPR) completedSets.firstOrNull { it.time == maxTime } else null
                 
-                if (isBrokenRecord && firstPRSet != null && !firstPRSet.isPR) {
+                if (isBrokenRecord && firstPRSet != null) {
                     val freshOldRec = formatTime(pastBestTime)
                     val newRec = formatTime(maxTime)
                     celebrateRecordBroken(workoutId, exerciseId, exercise.name, freshOldRec, newRec)
