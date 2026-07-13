@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
@@ -58,10 +61,26 @@ fun MainNavigation(viewModel: WorkoutViewModel) {
         OnboardingScreen(viewModel = viewModel)
     } else {
         var currentTab by remember { mutableStateOf(WorkoutTab.WORKOUT) }
+        val isWorkoutStarted by viewModel.isWorkoutStarted.collectAsState()
+        val isTimerPaused by viewModel.isTimerPaused.collectAsState()
+        // Focused mode: hide the nav bar while the workout timer is actively running.
+        val showBottomBar = !(isWorkoutStarted && !isTimerPaused)
+
+        // Safety net: never leave the user stranded on another tab with the nav hidden.
+        LaunchedEffect(showBottomBar) {
+            if (!showBottomBar && currentTab != WorkoutTab.WORKOUT) {
+                currentTab = WorkoutTab.WORKOUT
+            }
+        }
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             bottomBar = {
+                AnimatedVisibility(
+                    visible = showBottomBar,
+                    enter = expandVertically(expandFrom = Alignment.Top),
+                    exit = shrinkVertically(shrinkTowards = Alignment.Top)
+                ) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 8.dp
@@ -90,6 +109,7 @@ fun MainNavigation(viewModel: WorkoutViewModel) {
                         label = { Text("Profile") },
                         icon = { Icon(Icons.Default.Person, contentDescription = "My Profile") }
                     )
+                }
                 }
             }
         ) { innerPadding ->

@@ -251,7 +251,7 @@ fun WorkoutScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 104.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Dashboard Intensity & Burn Dials — scrolls with list
@@ -297,31 +297,6 @@ fun WorkoutScreen(
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceAround,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("Strength target", fontSize = 11.sp, color = TextMuted)
-                                        Text("${(workout.startingStrengthScore + 2).toInt()}", fontWeight = FontWeight.Bold, color = TextDark)
-                                    }
-                                    Box(modifier = Modifier.width(1.dp).height(24.dp).background(BorderLight))
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("Burn target", fontSize = 11.sp, color = TextMuted)
-                                        Text("${targetCalories.toInt()} kcal", fontWeight = FontWeight.Bold, color = TextDark)
-                                    }
-                                    Box(modifier = Modifier.width(1.dp).height(24.dp).background(BorderLight))
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        val setsLeftCount = remember(exercises) {
-                                            exercises.flatMap { it.sets }.count { !it.isCompleted }
-                                        }
-                                        Text("Sets left", fontSize = 11.sp, color = TextMuted)
-                                        Text("$setsLeftCount sets", fontWeight = FontWeight.Bold, color = TextDark)
-                                    }
-                                }
                             }
                         }
                     }
@@ -376,11 +351,6 @@ fun WorkoutScreen(
                             Text("Add Exercise", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge, color = BluePrimary)
                         }
                     }
-                    
-                    // Extra spacing at bottom of list so button doesn't block cards
-                    item {
-                        Spacer(modifier = Modifier.height(100.dp))
-                    }
                 }
             }
         }
@@ -406,7 +376,7 @@ fun WorkoutScreen(
             val soundPlayer = LocalSoundPlayer.current
             Box(
                 modifier = Modifier
-                    .padding(bottom = if (isStarted) 80.dp else 16.dp)
+                    .padding(bottom = 88.dp)
                     .clickable {
                         soundPlayer.play(AppSound.BUTTON_TAP)
                         showRestModal = true
@@ -421,55 +391,51 @@ fun WorkoutScreen(
             }
         }
 
-        // Bottom Start Workout button or Floating Complete Workout button
-        if (!isStarted) {
+        // Docked Start/Complete Workout bar — solid background, flush with the bottom edge
+        // so no list content is ever visible behind the button.
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 12.dp
+        ) {
             val soundPlayer = LocalSoundPlayer.current
-            val startInteractionSource = remember { MutableInteractionSource() }
+            val barInteractionSource = remember { MutableInteractionSource() }
             Button(
                 onClick = {
-                    soundPlayer.play(AppSound.WHOOSH)
-                    viewModel.startWorkout()
-                },
-                interactionSource = startInteractionSource,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .height(56.dp)
-                    .pressScale(startInteractionSource),
-                colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
-                shape = MaterialTheme.shapes.medium,
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Start Workout", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
-            }
-        } else {
-            val completeInteractionSource = remember { MutableInteractionSource() }
-            Button(
-                onClick = {
-                    val hasIncomplete = exercises.any { state -> state.sets.any { !it.isCompleted } }
-                    if (hasIncomplete) {
-                        showIncompleteWarning = true
+                    if (!isStarted) {
+                        soundPlayer.play(AppSound.WHOOSH)
+                        viewModel.startWorkout()
                     } else {
-                        viewModel.completeWorkout()
+                        val hasIncomplete = exercises.any { state -> state.sets.any { !it.isCompleted } }
+                        if (hasIncomplete) {
+                            showIncompleteWarning = true
+                        } else {
+                            viewModel.completeWorkout()
+                        }
                     }
                 },
-                interactionSource = completeInteractionSource,
+                interactionSource = barInteractionSource,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .padding(16.dp)
                     .height(56.dp)
-                    .pressScale(completeInteractionSource),
+                    .pressScale(barInteractionSource),
                 colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
                 shape = MaterialTheme.shapes.medium,
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
-                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
+                Icon(
+                    if (isStarted) Icons.Default.Check else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White
+                )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Complete Workout", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
+                Text(
+                    if (isStarted) "Complete Workout" else "Start Workout",
+                    fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp
+                )
             }
         }
 
@@ -519,7 +485,7 @@ fun WorkoutScreen(
             val soundPlayer = LocalSoundPlayer.current
             Box(
                 modifier = Modifier
-                    .padding(bottom = if (isStarted) 80.dp else 16.dp)
+                    .padding(bottom = 88.dp)
                     .clickable {
                         soundPlayer.play(AppSound.BUTTON_TAP)
                         showCountdownModal = true
@@ -563,7 +529,10 @@ fun WorkoutScreen(
             )
             val soundPlayer = LocalSoundPlayer.current
             val context = LocalContext.current
-            LaunchedEffect(celeb) {
+            // Keyed on the exercise, not the whole state object: a value-only refresh of the
+            // pending record (user edited the set after completing it) must not replay the
+            // chime or restart the entrance animation.
+            LaunchedEffect(celeb.exerciseName) {
                 // Fire the chime/haptic here, when the dialog actually becomes visible, rather
                 // than from the ViewModel - the dialog itself is deferred until the user leaves
                 // the exercise detail screen, so playing the sound at detection time meant it
@@ -574,6 +543,10 @@ fun WorkoutScreen(
                 trophyBounce.snapTo(0f)
                 cardEntrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
                 trophyBounce.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessLow))
+                // Auto-dismiss so the celebration never blocks a mid-workout user;
+                // keyed on `celeb`, so a queued second record restarts the window.
+                kotlinx.coroutines.delay(3000)
+                viewModel.dismissRecordCelebration()
             }
             Dialog(onDismissRequest = { viewModel.dismissRecordCelebration() }) {
                 Card(
@@ -1008,6 +981,14 @@ fun WorkoutSummaryDialog(
                         animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
                         label = "volumeCountUp"
                     )
+                    // Records Broken is the emotional payoff — when any were broken it
+                    // gets a full-width hero row above everything else.
+                    if (summary.prCount > 0) {
+                        HeroRecordBox(
+                            count = animatedPrCount,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1029,28 +1010,13 @@ fun WorkoutSummaryDialog(
                             )
                         }
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // PRs card (hidden when no records were broken)
-                        if (summary.prCount > 0) {
-                            StatBox(
-                                value = "$animatedPrCount",
-                                label = "Records",
-                                subtext = "Broken",
-                                modifier = Modifier.weight(1f),
-                                highlight = true
-                            )
-                        }
-                        // Volume card
-                        StatBox(
-                            value = "$animatedVolume",
-                            label = "kg",
-                            subtext = "Lifted",
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    // Volume card (records moved to the hero row above)
+                    StatBox(
+                        value = "$animatedVolume",
+                        label = "kg",
+                        subtext = "Lifted",
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     // Strength & Stamina Gained deltas
                     if (summary.strengthScoreDelta > 0.001 && summary.staminaScoreDelta > 0.001) {
                         Row(
@@ -1225,6 +1191,53 @@ fun StatBox(
                 fontSize = 11.sp,
                 color = TextMuted
             )
+        }
+    }
+}
+
+@Composable
+private fun HeroRecordBox(
+    count: Int,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = AmberWarningBgLight),
+        border = BorderStroke(1.5.dp, GoldPR.copy(alpha = 0.6f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.EmojiEvents,
+                contentDescription = null,
+                tint = GoldPR,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "$count",
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
+                color = GoldPR
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = if (count == 1) "Record" else "Records",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GoldPR
+                )
+                Text(
+                    text = "Broken",
+                    fontSize = 12.sp,
+                    color = TextMuted
+                )
+            }
         }
     }
 }
