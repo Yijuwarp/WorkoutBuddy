@@ -8,6 +8,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -741,7 +749,7 @@ fun OnboardingStep3(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Height selector slider
+        // Height selector
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -753,32 +761,41 @@ fun OnboardingStep3(
             val heightInteractionSource = remember { MutableInteractionSource() }
             val heightDragging by heightInteractionSource.collectIsDraggedAsState()
             val heightThumbScale by animateFloatAsState(if (heightDragging) 1.3f else 1f, label = "heightThumbScale")
-            Slider(
-                value = height.toFloat(),
-                onValueChange = { onHeightChange(it.toDouble()) },
-                valueRange = 100f..230f,
-                interactionSource = heightInteractionSource,
-                thumb = {
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .scale(heightThumbScale)
-                            .clip(CircleShape)
-                            .background(BlueSecondary)
-                    )
-                },
-                colors = SliderDefaults.colors(
-                    activeTrackColor = BluePrimary,
-                    inactiveTrackColor = Color.White.copy(alpha = 0.1f),
-                    thumbColor = BlueSecondary
-                ),
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                MetricStepButton("−") { onHeightChange((height - 1.0).coerceAtLeast(100.0)) }
+                Slider(
+                    value = height.toFloat(),
+                    onValueChange = { onHeightChange(it.toDouble()) },
+                    valueRange = 100f..230f,
+                    interactionSource = heightInteractionSource,
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .scale(heightThumbScale)
+                                .clip(CircleShape)
+                                .background(BlueSecondary)
+                        )
+                    },
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = BluePrimary,
+                        inactiveTrackColor = Color.White.copy(alpha = 0.1f),
+                        thumbColor = BlueSecondary
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp)
+                )
+                MetricStepButton("+") { onHeightChange((height + 1.0).coerceAtMost(230.0)) }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Weight selector slider
+        // Weight selector
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -790,27 +807,95 @@ fun OnboardingStep3(
             val weightInteractionSource = remember { MutableInteractionSource() }
             val weightDragging by weightInteractionSource.collectIsDraggedAsState()
             val weightThumbScale by animateFloatAsState(if (weightDragging) 1.3f else 1f, label = "weightThumbScale")
-            Slider(
-                value = weight.toFloat(),
-                onValueChange = { onWeightChange(it.toDouble()) },
-                valueRange = 30f..180f,
-                interactionSource = weightInteractionSource,
-                thumb = {
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .scale(weightThumbScale)
-                            .clip(CircleShape)
-                            .background(BlueSecondary)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                MetricStepButton("−") { onWeightChange((weight - 0.1).coerceAtLeast(30.0)) }
+                Slider(
+                    value = weight.toFloat(),
+                    onValueChange = { onWeightChange(it.toDouble()) },
+                    valueRange = 30f..180f,
+                    interactionSource = weightInteractionSource,
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .scale(weightThumbScale)
+                                .clip(CircleShape)
+                                .background(BlueSecondary)
+                        )
+                    },
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = BluePrimary,
+                        inactiveTrackColor = Color.White.copy(alpha = 0.1f),
+                        thumbColor = BlueSecondary
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp)
+                )
+                MetricStepButton("+") { onWeightChange((weight + 0.1).coerceAtMost(180.0)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricStepButton(label: String, onClick: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val pressed = remember { mutableStateOf(false) }
+    val currentOnClick by rememberUpdatedState(onClick)
+    val offsetY by animateDpAsState(if (pressed.value) 1.dp else 0.dp, label = "btn3dOffset")
+    val shadowAlpha by animateFloatAsState(if (pressed.value) 0.1f else 0.35f, label = "btn3dShadow")
+    Box(contentAlignment = Alignment.Center) {
+        // shadow layer
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .offset(y = if (pressed.value) 1.dp else 3.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = shadowAlpha))
+        )
+        // face layer
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .offset(y = offsetY)
+                .clip(CircleShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.32f),
+                            Color.White.copy(alpha = 0.08f)
+                        )
                     )
+                )
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        pressed.value = true
+                        currentOnClick()
+                        val job = scope.launch {
+                            delay(350L)
+                            while (isActive) {
+                                currentOnClick()
+                                delay(80L)
+                            }
+                        }
+                        try {
+                            do {
+                                val event = awaitPointerEvent()
+                            } while (event.changes.any { it.pressed })
+                        } finally {
+                            job.cancel()
+                            pressed.value = false
+                        }
+                    }
                 },
-                colors = SliderDefaults.colors(
-                    activeTrackColor = BluePrimary,
-                    inactiveTrackColor = Color.White.copy(alpha = 0.1f),
-                    thumbColor = BlueSecondary
-                ),
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
+            contentAlignment = Alignment.Center
+        ) {
+            Text(label, color = Color.White, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
         }
     }
 }

@@ -717,12 +717,22 @@ fun WorkoutScreen(
 
         // Replace Exercise Dialog
         showReplaceDialogForExerciseId?.let { oldId ->
+            val replacedBodyPart = exercises.find { it.exercise.id == oldId }?.exercise?.bodyPart
+            val availableExercises = allExercises.filter { ex ->
+                exercises.none { it.exercise.id == ex.id }
+            }
+            // Mirror the dialog's default AVAILABLE equipment filter so we don't open the
+            // Muscle Group tab when every exercise in that group requires unowned equipment.
+            val hasSameMuscleGroup = replacedBodyPart != null &&
+                availableExercises.any { ex ->
+                    ex.bodyPart == replacedBodyPart &&
+                    Equipment.parseCsv(ex.equipment).let { req ->
+                        req.isEmpty() || req.all { it in ownedEquipment }
+                    }
+                }
             ExercisePickerDialog(
                 title = "Replace Exercise",
-                exercises = allExercises.filter { ex ->
-                    // Exclude exercises already in active workout
-                    exercises.none { it.exercise.id == ex.id }
-                },
+                exercises = availableExercises,
                 onDismiss = { showReplaceDialogForExerciseId = null },
                 onExerciseSelected = { newExercise ->
                     viewModel.replaceExerciseInWorkout(oldId, newExercise.id)
@@ -732,10 +742,8 @@ fun WorkoutScreen(
                 },
                 ownedEquipment = ownedEquipment,
                 usageStats = exerciseUsageStats,
-                // Opens straight into the muscle group the exercise being replaced is from;
-                // the user can still switch tabs or pick a different group from there.
-                initialTab = 1,
-                initialMuscleGroup = exercises.find { it.exercise.id == oldId }?.exercise?.bodyPart
+                initialTab = if (hasSameMuscleGroup) 1 else 0,
+                initialMuscleGroup = if (hasSameMuscleGroup) replacedBodyPart else null
             )
         }
 
