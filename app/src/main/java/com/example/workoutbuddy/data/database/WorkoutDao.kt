@@ -40,6 +40,9 @@ interface WorkoutDao {
     @Query("SELECT * FROM workouts WHERE isCompleted = 1 ORDER BY date DESC LIMIT 5")
     fun getLast5CompletedWorkouts(): List<WorkoutEntity>
 
+    @Query("SELECT * FROM workouts WHERE isCompleted = 1 ORDER BY date DESC LIMIT 100")
+    fun getLast100CompletedWorkouts(): List<WorkoutEntity>
+
     @Query("SELECT * FROM workouts WHERE isCompleted = 1 ORDER BY date DESC")
     fun getAllCompletedWorkouts(): Flow<List<WorkoutEntity>>
 

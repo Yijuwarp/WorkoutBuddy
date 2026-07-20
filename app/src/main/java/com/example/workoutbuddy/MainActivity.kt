@@ -13,6 +13,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.example.workoutbuddy.notification.DailyReminderScheduler
 import com.example.workoutbuddy.theme.WorkoutBuddyTheme
 import com.example.workoutbuddy.ui.util.LocalSoundPlayer
 import com.example.workoutbuddy.viewmodel.WorkoutViewModel
@@ -36,6 +37,8 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
         }
+
+        DailyReminderScheduler.scheduleNext(this)
 
         setContent {
             WorkoutBuddyTheme {
