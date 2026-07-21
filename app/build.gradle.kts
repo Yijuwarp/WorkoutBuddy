@@ -21,7 +21,7 @@ android {
         applicationId = "com.venkatchait.workoutbuddy"
         minSdk = 24
         targetSdk = 36
-        versionCode = 5
+        versionCode = 6
         versionName = "1.5"
     }
 
