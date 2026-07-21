@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -273,6 +274,7 @@ fun CalendarWidget(
                                                     "PUSH" -> BluePrimary
                                                     "PULL" -> GreenSuccess
                                                     "LOWER_BODY" -> GoldPR
+                                                    "CARDIO" -> PerformanceRed
                                                     else -> BlueSecondary
                                                 }
                                                 Box(
@@ -363,8 +365,9 @@ fun ExerciseListItem(
     currentFrequency: com.example.workoutbuddy.data.Frequency? = null,
     onSetFrequency: (com.example.workoutbuddy.data.Frequency?) -> Unit = {}
 ) {
-    val remainingSets = exerciseState.sets.count { !it.isCompleted }
-    val isCompleted = exerciseState.sets.isNotEmpty() && exerciseState.sets.all { it.isCompleted }
+    val totalSets = exerciseState.sets.size
+    val completedSets = exerciseState.sets.count { it.isCompleted }
+    val isCompleted = totalSets > 0 && completedSets == totalSets
     
     val repsText = remember(exerciseState.sets, exerciseState.exercise.type) {
         val firstSet = exerciseState.sets.firstOrNull()
@@ -396,17 +399,20 @@ fun ExerciseListItem(
         ),
         border = BorderStroke(1.dp, if (isCompleted) BluePrimary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outline)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(modifier = Modifier.size(52.dp)) {
+            Box(modifier = Modifier.size(76.dp)) {
                 ExerciseThumbnail(
                     exerciseName = exerciseState.exercise.name,
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(76.dp)
                 )
                 if (isCompleted) {
                     Icon(
@@ -421,7 +427,7 @@ fun ExerciseListItem(
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = exerciseState.exercise.name,
@@ -429,10 +435,17 @@ fun ExerciseListItem(
                     color = TextDark
                 )
                 Text(
-                    text = "${exerciseState.exercise.bodyPart} • ($remainingSets Sets Left. $repsText)",
+                    text = exerciseState.exercise.bodyPart,
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                    color = TextBlue // Blue subtext!
+                    color = TextMuted
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ExerciseInfoChip("$totalSets Sets")
+                    if (repsText.isNotEmpty()) {
+                        ExerciseInfoChip(repsText)
+                    }
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -514,6 +527,43 @@ fun ExerciseListItem(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Set-completion progress
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LinearProgressIndicator(
+                progress = { if (totalSets > 0) completedSets.toFloat() / totalSets else 0f },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(4.dp),
+                color = BluePrimary,
+                trackColor = BorderLight,
+                strokeCap = StrokeCap.Round
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "$completedSets/$totalSets",
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = TextBlue
+            )
+        }
+        }
+    }
+}
+
+@Composable
+private fun ExerciseInfoChip(text: String) {
+    Box(
+        modifier = Modifier
+            .border(1.dp, BorderLight, RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+            color = TextDark
+        )
     }
 }
 
@@ -2455,7 +2505,14 @@ fun ExercisePickerDialog(
                     } else {
                         // Muscle Group Tab
                         if (selectedMuscleGroup == null) {
-                            val muscleGroups = listOf("Chest", "Back", "Shoulders", "Biceps", "Triceps", "Legs", "Core", "Glutes", "Calves", "Cardio", "Full Body")
+                            // Ordered anatomically (upper body top-down, then lower body,
+                            // then the catch-alls) so related muscles sit next to each other.
+                            val muscleGroups = listOf(
+                                "Chest", "Shoulders", "Traps", "Back", "Lats",
+                                "Biceps", "Triceps", "Core",
+                                "Glutes", "Quads", "Hamstrings", "Calves",
+                                "Full Body", "Cardio"
+                            )
                             LazyColumn(
                                 modifier = Modifier.weight(1f).fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)

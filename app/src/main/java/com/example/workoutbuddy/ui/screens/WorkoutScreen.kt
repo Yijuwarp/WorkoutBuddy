@@ -54,8 +54,8 @@ fun WorkoutScreen(
     val exercises by viewModel.activeExerciseStates.collectAsState()
     val summary by viewModel.workoutSummary.collectAsState()
     val recordBrokenCelebration by viewModel.recordBrokenCelebration.collectAsState()
-    val displayedIntensity by viewModel.displayedIntensity.collectAsState()
     val displayedCalories by viewModel.displayedCalories.collectAsState()
+    val performanceScore by viewModel.performanceScore.collectAsState()
     val userProfileForEquipment by viewModel.userProfile.collectAsState()
     val ownedEquipment = remember(userProfileForEquipment) {
         Equipment.parseCsv(userProfileForEquipment?.equipmentOwned ?: Equipment.allIdsCsv)
@@ -148,6 +148,7 @@ fun WorkoutScreen(
                                     "PUSH" -> BluePrimary
                                     "PULL" -> GreenSuccess
                                     "LOWER_BODY" -> GoldPR
+                                    "CARDIO" -> PerformanceRed
                                     else -> BlueSecondary
                                 }
                                 Text(
@@ -190,6 +191,13 @@ fun WorkoutScreen(
                                         showCategoryMenu = false
                                     }
                                 )
+                                DropdownMenuItem(
+                                    text = { Text("CARDIO Workout", color = PerformanceRed, fontWeight = FontWeight.Bold) },
+                                    onClick = {
+                                        viewModel.loadOrGenerateActiveWorkout("CARDIO")
+                                        showCategoryMenu = false
+                                    }
+                                )
                             }
                         }
 
@@ -210,32 +218,32 @@ fun WorkoutScreen(
 
                 // Workout Ticker Timer Box
                 val isPaused by viewModel.isTimerPaused.collectAsState()
-                val timerBgColor = if (isStarted) {
-                    if (isPaused) AmberWarningBgStrong else LightBlueContainer
-                } else {
-                    BorderLight.copy(alpha = 0.5f)
-                }
+                val timerBgColor = if (isStarted && isPaused) AmberWarningBgStrong else LightBlueContainer
                 val timerTextColor = if (isStarted) {
                     if (isPaused) GoldPR else BluePrimary
                 } else {
-                    TextMuted
+                    TextDark
                 }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .clip(MaterialTheme.shapes.extraSmall)
+                        .clip(RoundedCornerShape(20.dp))
                         .background(timerBgColor)
                         .clickable(enabled = isStarted) {
                             viewModel.toggleWorkoutTimer()
                         }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
                     Icon(
-                        imageVector = if (isPaused || !isStarted) Icons.Default.PlayArrow else Icons.Default.Pause,
+                        imageVector = when {
+                            !isStarted -> Icons.Default.Timer
+                            isPaused -> Icons.Default.PlayArrow
+                            else -> Icons.Default.Pause
+                        },
                         contentDescription = "Timer Icon",
-                        tint = timerTextColor,
-                        modifier = Modifier.size(16.dp)
+                        tint = if (isStarted) timerTextColor else BluePrimary,
+                        modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
@@ -270,33 +278,17 @@ fun WorkoutScreen(
                                     .padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                val totalSetsCount = remember(exercises) {
-                                    exercises.flatMap { it.sets }.size.coerceAtLeast(1)
-                                }
-                                val targetScore = workout.startingStrengthScore * totalSetsCount
-                                val targetCalories = totalSetsCount * 20.0 + 100.0
+                                val allSets = remember(exercises) { exercises.flatMap { it.sets } }
+                                val completedSetsCount = allSets.count { it.isCompleted }
 
-                                val currentBurnedCalories = workout.totalCalories
-
-                                Row(
+                                PerformanceHeroCard(
+                                    score = performanceScore,
+                                    burnedCalories = displayedCalories,
+                                    completedSets = completedSetsCount,
+                                    totalSets = allSets.size,
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 12.dp)
-                                        .onGloballyPositioned { dialsBounds = it.boundsInWindow() },
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    WorkoutIntensityDial(
-                                        intensityScore = displayedIntensity,
-                                        targetScore = targetScore
-                                    )
-
-                                    WorkoutBurnDial(
-                                        burnedCalories = displayedCalories,
-                                        targetCalories = targetCalories
-                                    )
-                                }
-
+                                        .onGloballyPositioned { dialsBounds = it.boundsInWindow() }
+                                )
                             }
                         }
                     }
@@ -423,7 +415,7 @@ fun WorkoutScreen(
                     .height(56.dp)
                     .pressScale(barInteractionSource),
                 colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
-                shape = MaterialTheme.shapes.medium,
+                shape = RoundedCornerShape(28.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
                 Icon(
@@ -1025,14 +1017,14 @@ fun WorkoutSummaryDialog(
                         ) {
                             StatBox(
                                 value = "+${String.format("%.1f", summary.strengthScoreDelta)}",
-                                label = "STR Score",
+                                label = "Strength",
                                 subtext = "Gained",
                                 modifier = Modifier.weight(1f),
                                 highlight = true
                             )
                             StatBox(
                                 value = "+${String.format("%.1f", summary.staminaScoreDelta)}",
-                                label = "STM Score",
+                                label = "Stamina",
                                 subtext = "Gained",
                                 modifier = Modifier.weight(1f),
                                 highlight = true
@@ -1041,7 +1033,7 @@ fun WorkoutSummaryDialog(
                     } else if (summary.strengthScoreDelta > 0.001) {
                         StatBox(
                             value = "+${String.format("%.1f", summary.strengthScoreDelta)}",
-                            label = "STR Score",
+                            label = "Strength",
                             subtext = "Gained",
                             modifier = Modifier.fillMaxWidth(),
                             highlight = true
@@ -1049,7 +1041,7 @@ fun WorkoutSummaryDialog(
                     } else if (summary.staminaScoreDelta > 0.001) {
                         StatBox(
                             value = "+${String.format("%.1f", summary.staminaScoreDelta)}",
-                            label = "STM Score",
+                            label = "Stamina",
                             subtext = "Gained",
                             modifier = Modifier.fillMaxWidth(),
                             highlight = true

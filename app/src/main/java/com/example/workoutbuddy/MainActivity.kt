@@ -1,6 +1,5 @@
 package com.example.workoutbuddy
 
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -34,10 +33,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
-        }
-
+        // Notification and battery-optimization permissions are requested during onboarding
+        // (OnboardingPermissionsStep) instead of on every launch.
         DailyReminderScheduler.scheduleNext(this)
 
         setContent {

@@ -10,6 +10,7 @@
     <!-- Android 13+ (API 33+): auto-granted for timer/alarm apps, no user prompt needed -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:name=".WorkoutApplication"

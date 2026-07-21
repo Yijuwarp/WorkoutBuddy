@@ -1,10 +1,11 @@
 package com.example.workoutbuddy
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.example.workoutbuddy.theme.BluePrimary
+import com.example.workoutbuddy.theme.TextMuted
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -30,6 +31,36 @@ import com.example.workoutbuddy.viewmodel.WorkoutViewModel
 
 enum class WorkoutTab {
     WORKOUT, BODY, LOG, PROFILE
+}
+
+@Composable
+private fun PillNavItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (selected) BluePrimary else TextMuted,
+            modifier = Modifier.size(26.dp)
+        )
+        Spacer(modifier = Modifier.height(5.dp))
+        Box(
+            modifier = Modifier
+                .size(5.dp)
+                .clip(CircleShape)
+                .background(if (selected) BluePrimary else androidx.compose.ui.graphics.Color.Transparent)
+        )
+    }
 }
 
 @Composable
@@ -81,34 +112,47 @@ fun MainNavigation(viewModel: WorkoutViewModel) {
                     enter = expandVertically(expandFrom = Alignment.Top),
                     exit = shrinkVertically(shrinkTowards = Alignment.Top)
                 ) {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                Surface(
+                    modifier = Modifier
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(36.dp)),
+                    color = MaterialTheme.colorScheme.surface,
                     tonalElevation = 8.dp
                 ) {
-                    NavigationBarItem(
-                        selected = currentTab == WorkoutTab.WORKOUT,
-                        onClick = { currentTab = WorkoutTab.WORKOUT },
-                        label = { Text("Workout") },
-                        icon = { Icon(Icons.Default.PlayArrow, contentDescription = "Active Workout") }
-                    )
-                    NavigationBarItem(
-                        selected = currentTab == WorkoutTab.BODY,
-                        onClick = { currentTab = WorkoutTab.BODY },
-                        label = { Text("Body") },
-                        icon = { Icon(Icons.Default.MonitorHeart, contentDescription = "Body") }
-                    )
-                    NavigationBarItem(
-                        selected = currentTab == WorkoutTab.LOG,
-                        onClick = { currentTab = WorkoutTab.LOG },
-                        label = { Text("Log") },
-                        icon = { Icon(Icons.Default.DateRange, contentDescription = "Workout Log") }
-                    )
-                    NavigationBarItem(
-                        selected = currentTab == WorkoutTab.PROFILE,
-                        onClick = { currentTab = WorkoutTab.PROFILE },
-                        label = { Text("Profile") },
-                        icon = { Icon(Icons.Default.Person, contentDescription = "My Profile") }
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PillNavItem(
+                            selected = currentTab == WorkoutTab.WORKOUT,
+                            onClick = { currentTab = WorkoutTab.WORKOUT },
+                            icon = Icons.Default.FitnessCenter,
+                            contentDescription = "Active Workout"
+                        )
+                        PillNavItem(
+                            selected = currentTab == WorkoutTab.BODY,
+                            onClick = { currentTab = WorkoutTab.BODY },
+                            icon = Icons.Default.MonitorHeart,
+                            contentDescription = "Body"
+                        )
+                        PillNavItem(
+                            selected = currentTab == WorkoutTab.LOG,
+                            onClick = { currentTab = WorkoutTab.LOG },
+                            icon = Icons.Default.DateRange,
+                            contentDescription = "Workout Log"
+                        )
+                        PillNavItem(
+                            selected = currentTab == WorkoutTab.PROFILE,
+                            onClick = { currentTab = WorkoutTab.PROFILE },
+                            icon = Icons.Default.Person,
+                            contentDescription = "My Profile"
+                        )
+                    }
                 }
                 }
             }

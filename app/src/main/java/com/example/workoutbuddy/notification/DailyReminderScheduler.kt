@@ -6,6 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import com.example.workoutbuddy.WorkoutApplication
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 object DailyReminderScheduler {
@@ -14,9 +17,11 @@ object DailyReminderScheduler {
 
     fun scheduleNext(context: Context) {
         val app = context.applicationContext as WorkoutApplication
-        val analyzer = WorkoutTimeAnalyzer(app.database.workoutDao())
-        val reminderTime = analyzer.computeReminderTime()
-        scheduleAt(context, reminderTime.hour, reminderTime.minute)
+        CoroutineScope(Dispatchers.IO).launch {
+            val analyzer = WorkoutTimeAnalyzer(app.database.workoutDao())
+            val reminderTime = analyzer.computeReminderTime()
+            scheduleAt(context, reminderTime.hour, reminderTime.minute)
+        }
     }
 
     private fun scheduleAt(context: Context, hour: Int, minute: Int) {
@@ -34,7 +39,6 @@ object DailyReminderScheduler {
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-            // If the time has already passed today, schedule for tomorrow
             if (timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }

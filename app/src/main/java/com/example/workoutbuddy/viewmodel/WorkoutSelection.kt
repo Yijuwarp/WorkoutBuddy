@@ -17,6 +17,13 @@ fun isExerciseAvailable(exercise: ExerciseEntity, ownedEquipment: Set<Equipment>
     return required.isEmpty() || required.all { it in ownedEquipment }
 }
 
+// Bucket key for the per-bodyPart cap. Any "Full Body" variant ("Full Body",
+// "Core & Full Body", ...) shares one bucket, so a workout can hold at most
+// maxPerBodyPart full-body exercises in total — they're valid on every day, but
+// shouldn't dominate one.
+private fun bodyPartBucket(exercise: ExerciseEntity): String =
+    if (exercise.bodyPart.contains("Full Body", ignoreCase = true)) "Full Body" else exercise.bodyPart
+
 // Hard gates: equipment ownership, difficulty ceiling, and "Never" are absolute and never
 // relaxed, regardless of frequency tag (including "Always" - see selectFromPool).
 private fun eligibleForSelection(
@@ -51,7 +58,8 @@ private fun selectFromPool(
 
     val bodyPartCounts = mutableMapOf<String, Int>()
     for (exercise in always) {
-        bodyPartCounts[exercise.bodyPart] = bodyPartCounts.getOrDefault(exercise.bodyPart, 0) + 1
+        val bucket = bodyPartBucket(exercise)
+        bodyPartCounts[bucket] = bodyPartCounts.getOrDefault(bucket, 0) + 1
     }
 
     val remainingCandidates = eligiblePool.filter { it.id !in alwaysIds }
@@ -84,7 +92,7 @@ private fun weightedFill(
 
     repeat(slots) {
         if (pool.isEmpty()) return@repeat
-        val capped = pool.filter { bodyPartCounts.getOrDefault(it.bodyPart, 0) < maxPerBodyPart }
+        val capped = pool.filter { bodyPartCounts.getOrDefault(bodyPartBucket(it), 0) < maxPerBodyPart }
         val from = capped.ifEmpty { pool }
         val totalWeight = from.sumOf { weightOf(it, preferences) }
         var roll = rng.nextDouble() * totalWeight
@@ -98,7 +106,8 @@ private fun weightedFill(
         }
         picked.add(chosen)
         pool.remove(chosen)
-        bodyPartCounts[chosen.bodyPart] = bodyPartCounts.getOrDefault(chosen.bodyPart, 0) + 1
+        val bucket = bodyPartBucket(chosen)
+        bodyPartCounts[bucket] = bodyPartCounts.getOrDefault(bucket, 0) + 1
     }
     return picked
 }

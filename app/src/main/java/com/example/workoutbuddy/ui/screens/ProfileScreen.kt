@@ -52,6 +52,7 @@ fun ProfileScreen(
     var weightText by remember { mutableStateOf("") }
     var showEquipmentScreen by remember { mutableStateOf(false) }
     var showDifficultyDialog by remember { mutableStateOf(false) }
+    var showWorkoutLengthDialog by remember { mutableStateOf(false) }
     var showManageExercises by remember { mutableStateOf(false) }
 
     // Sync input states once profile is loaded
@@ -92,14 +93,6 @@ fun ProfileScreen(
             .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
-        // Title Bar
-        Text(
-            text = "My Profile",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-            color = TextDark,
-            modifier = Modifier.padding(bottom = 20.dp)
-        )
-
         profileState?.let { p ->
             // --- Premium Scores Card ---
             ProfileScoresCard(
@@ -109,14 +102,33 @@ fun ProfileScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // --- Profile Form Details ---
-            Text(
-                text = "Personal Details",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = TextDark,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+            // --- Profile Form Details (collapsible, starts collapsed) ---
+            var personalDetailsExpanded by remember { mutableStateOf(false) }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { personalDetailsExpanded = !personalDetailsExpanded }
+                    .padding(top = 4.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Personal Details",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = TextDark
+                )
+                Icon(
+                    imageVector = if (personalDetailsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (personalDetailsExpanded) "Collapse personal details" else "Expand personal details",
+                    tint = TextMuted
+                )
+            }
 
+            androidx.compose.animation.AnimatedVisibility(
+                visible = personalDetailsExpanded,
+                enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+            ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
@@ -258,6 +270,7 @@ fun ProfileScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(28.dp))
 
@@ -352,6 +365,28 @@ fun ProfileScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { showWorkoutLengthDialog = true }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Workout Length", fontWeight = FontWeight.Bold, color = TextDark, fontSize = 14.sp)
+                        Text(
+                            "Currently: ${WORKOUT_LENGTH_OPTIONS.firstOrNull { it.first == p.workoutLengthMinutes }?.second ?: "45 min"}",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = TextMuted)
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .clickable { showManageExercises = true }
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -377,6 +412,55 @@ fun ProfileScreen(
         }
         
         Spacer(modifier = Modifier.height(80.dp)) // Extra padding at bottom
+    }
+
+    if (showWorkoutLengthDialog) {
+        Dialog(onDismissRequest = { showWorkoutLengthDialog = false }) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        "Workout Length",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                        color = TextDark
+                    )
+                    Text(
+                        "Auto-generated workouts are sized to fit. Short workouts skip the cardio finisher.",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+                    )
+                    WORKOUT_LENGTH_OPTIONS.forEach { (minutes, label) ->
+                        val isSelected = profileState?.workoutLengthMinutes == minutes
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                                .clickable {
+                                    viewModel.setWorkoutLength(minutes)
+                                    showWorkoutLengthDialog = false
+                                },
+                            shape = MaterialTheme.shapes.medium,
+                            border = BorderStroke(1.5.dp, if (isSelected) BluePrimary else BorderLight),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) LightBlueContainer else Color.Transparent
+                            )
+                        ) {
+                            Text(
+                                text = label,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) BluePrimary else TextDark,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 
     if (showDifficultyDialog) {

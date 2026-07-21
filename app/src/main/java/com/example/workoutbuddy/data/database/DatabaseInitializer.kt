@@ -189,7 +189,7 @@ object DatabaseInitializer {
                 name = "Dumbbell Front Raises",
                 category = "PUSH",
                 type = "LIFT",
-                bodyPart = "Front Deltoids",
+                bodyPart = "Shoulders (Front)",
                 calorieBurnRate = 0.14,
                 description = "Targets the anterior deltoid by raising dumbbells forward to shoulder height.",
                 howToSteps = "Stand with dumbbells in front of thighs.\nRaise one or both arms forward to shoulder height.\nKeep a slight bend in the elbows.\nLower with control.",
@@ -412,7 +412,7 @@ object DatabaseInitializer {
                 name = "Face Pulls",
                 category = "PULL",
                 type = "LIFT",
-                bodyPart = "Rear Deltoids",
+                bodyPart = "Shoulders (Rear)",
                 calorieBurnRate = 0.14,
                 description = "Cable rear-delt exercise that improves posture, shoulder health, and develops the posterior deltoid.",
                 howToSteps = "Set a rope attachment at face height on a cable machine.\nGrip both ends with pronated hands.\nPull the rope toward your face, flaring elbows out.\nSeparate the rope ends at your ears at the peak.\nReturn with control.",
@@ -511,7 +511,7 @@ object DatabaseInitializer {
                 name = "Reverse Fly (Dumbbell)",
                 category = "PULL",
                 type = "LIFT",
-                bodyPart = "Rear Deltoids",
+                bodyPart = "Shoulders (Rear)",
                 calorieBurnRate = 0.14,
                 description = "Bent-over dumbbell fly that targets the rear deltoids and upper back for better posture.",
                 howToSteps = "Hinge forward at hips until torso is nearly horizontal.\nHold dumbbells hanging below chest.\nWith slight bend in elbows, raise arms out to sides.\nSqueeze rear delts at the top.\nLower with control.",
@@ -569,7 +569,7 @@ object DatabaseInitializer {
                 name = "Barbell Back Squat",
                 category = "LOWER_BODY",
                 type = "LIFT",
-                bodyPart = "Legs",
+                bodyPart = "Quads & Glutes",
                 calorieBurnRate = 0.48,
                 description = "The king of lower body exercises. Bar on your upper back, squat to parallel to build quads, glutes, and overall lower body power.",
                 howToSteps = "Place barbell across upper traps, feet shoulder-width.\nBreath, brace core.\nPush knees out and descend until thighs are parallel to floor.\nDrive up through heels, push knees out.",
@@ -588,10 +588,21 @@ object DatabaseInitializer {
                 youtubeUrl = "https://www.youtube.com/watch?v=m4ytaCJZpl0"
             ),
             ExerciseEntity(
+                name = "Dumbbell Squat",
+                category = "LOWER_BODY",
+                type = "LIFT",
+                bodyPart = "Quads & Glutes",
+                calorieBurnRate = 0.32,
+                description = "A squat holding a dumbbell at each shoulder (rack position). Loads the legs without needing a barbell or rack.",
+                howToSteps = "Hold a dumbbell at each shoulder, elbows up and palms facing in.\nStand with feet shoulder-width apart, toes slightly out.\nSquat down until thighs are parallel to the floor, keeping your chest tall and elbows high.\nDrive through your heels to stand back up.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=QSleSxhvs7s"
+            ),
+            ExerciseEntity(
                 name = "Goblet Squat",
                 category = "LOWER_BODY",
                 type = "LIFT",
-                bodyPart = "Legs",
+                bodyPart = "Quads & Glutes",
                 calorieBurnRate = 0.30,
                 description = "Holding a dumbbell or kettlebell at the chest while squatting. Great for beginners and high-rep work.",
                 howToSteps = "Hold a dumbbell vertically at chest height.\nFeet shoulder-width, toes slightly out.\nSquat down keeping the dumbbell close to your body.\nDrive heels into floor to stand.",
@@ -624,7 +635,7 @@ object DatabaseInitializer {
                 name = "Walking Lunges",
                 category = "LOWER_BODY",
                 type = "LIFT",
-                bodyPart = "Legs",
+                bodyPart = "Quads & Glutes",
                 calorieBurnRate = 0.30,
                 description = "Dynamic lunge variation building unilateral leg strength, balance, and glute activation.",
                 howToSteps = "Stand holding dumbbells at your sides.\nStep forward with one foot, lowering back knee toward the floor.\nPush off the front foot to bring rear foot forward.\nAlternate legs with each step.",
@@ -646,7 +657,7 @@ object DatabaseInitializer {
                 name = "Barbell Lunge",
                 category = "LOWER_BODY",
                 type = "LIFT",
-                bodyPart = "Legs",
+                bodyPart = "Quads & Glutes",
                 calorieBurnRate = 0.38,
                 description = "A loaded lunge with a barbell on the back, building unilateral quad and glute strength under heavier load.",
                 howToSteps = "Set a barbell across your upper back as you would for a squat.\nStep forward into a lunge, lowering your back knee toward the floor.\nKeep your torso upright and front knee tracking over the foot.\nDrive through the front heel to return to standing.\nAlternate legs each rep, bracing your core throughout.",
@@ -756,7 +767,7 @@ object DatabaseInitializer {
                 name = "Sumo Deadlift",
                 category = "LOWER_BODY",
                 type = "LIFT",
-                bodyPart = "Legs & Back",
+                bodyPart = "Glutes & Hamstrings",
                 calorieBurnRate = 0.46,
                 description = "Wide-stance deadlift variation that places more emphasis on the inner thighs, glutes, and quads.",
                 howToSteps = "Stand with feet wide, toes pointing outward.\nGrip the bar inside your legs.\nKeep chest tall and back flat.\nDrive through heels and push knees outward as you stand.\nLower with control.",
@@ -767,7 +778,7 @@ object DatabaseInitializer {
                 name = "Dumbbell Sumo Deadlift",
                 category = "LOWER_BODY",
                 type = "LIFT",
-                bodyPart = "Legs & Back",
+                bodyPart = "Glutes & Hamstrings",
                 calorieBurnRate = 0.40,
                 description = "A wide-stance deadlift using a single dumbbell, emphasizing the inner thighs and glutes with a beginner-friendly setup.",
                 howToSteps = "Stand over a dumbbell with feet wider than shoulder-width, toes pointed out.\nSquat down and grip the dumbbell with both hands in the center of your body.\nKeep your back flat and chest tall.\nDrive through your heels, pushing your knees outward as you stand.\nLower with control back to the floor.",
@@ -778,7 +789,7 @@ object DatabaseInitializer {
                 name = "Bodyweight Squats",
                 category = "LOWER_BODY",
                 type = "LIFT",
-                bodyPart = "Legs",
+                bodyPart = "Quads & Glutes",
                 calorieBurnRate = 0.22,
                 description = "Simple unloaded squat for warm-ups, high-rep conditioning, or beginners.",
                 howToSteps = "Stand feet shoulder-width, toes slightly out.\nLower hips until thighs parallel to floor.\nKeep chest up and knees over toes.\nStand back up.",
@@ -817,6 +828,77 @@ object DatabaseInitializer {
                 howToSteps = "Kneel on the floor holding an ab wheel.\nRoll forward, extending your body toward the floor.\nGo as far as you can while maintaining tension.\nPull back using your core, not your arms.",
                 impactLevel = "MEDIUM",
                 youtubeUrl = "https://www.youtube.com/watch?v=rqiTPdK1c_I"
+            ),
+
+            // ==================== CARDIO (equipment-free, time-based) ====================
+            // These seed the dedicated CARDIO day. Names must stay in sync with
+            // TIME_ONLY_CARDIO in WorkoutViewModel (time-tracked, no distance metric).
+
+            ExerciseEntity(
+                name = "Jumping Jacks",
+                category = "CARDIO",
+                type = "CARDIO",
+                bodyPart = "Full Body",
+                calorieBurnRate = 8.0,
+                description = "A classic full-body warm-up jump that raises the heart rate with zero equipment.",
+                howToSteps = "Stand tall with feet together and arms at your sides.\nJump while spreading your feet wide and swinging your arms overhead.\nJump again to bring feet together and arms back down.\nKeep a steady rhythm and land softly on the balls of your feet.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=uLVt6u15L98"
+            ),
+            ExerciseEntity(
+                name = "High Knees",
+                category = "CARDIO",
+                type = "CARDIO",
+                bodyPart = "Full Body",
+                calorieBurnRate = 9.0,
+                description = "Running in place while driving the knees to hip height — a high-tempo heart-rate spiker.",
+                howToSteps = "Stand tall with feet hip-width apart.\nRun in place, driving each knee up to hip height.\nPump your arms in rhythm and stay on the balls of your feet.\nKeep your core tight and torso upright throughout.",
+                impactLevel = "HIGH",
+                youtubeUrl = "https://www.youtube.com/watch?v=WofWmk-4qU4"
+            ),
+            ExerciseEntity(
+                name = "Burpees",
+                category = "CARDIO",
+                type = "CARDIO",
+                bodyPart = "Full Body",
+                calorieBurnRate = 10.0,
+                description = "The all-in-one conditioning move: squat, plank, push-up, and jump in a single rep.",
+                howToSteps = "From standing, squat down and place your hands on the floor.\nKick your feet back into a plank (add a push-up if you like).\nJump your feet back toward your hands.\nExplode up into a jump with arms overhead, then repeat.",
+                impactLevel = "HIGH",
+                youtubeUrl = "https://www.youtube.com/watch?v=OO7-dWIy0W8"
+            ),
+            ExerciseEntity(
+                name = "Mountain Climbers",
+                category = "CARDIO",
+                type = "CARDIO",
+                bodyPart = "Core & Full Body",
+                calorieBurnRate = 9.0,
+                description = "A plank-position sprint that torches the core while keeping the heart rate high.",
+                howToSteps = "Start in a high plank, wrists under shoulders.\nDrive one knee toward your chest, then quickly switch legs.\nKeep your hips level and core braced — don't let them bounce.\nBuild up to a fast, running-like rhythm.",
+                impactLevel = "HIGH",
+                youtubeUrl = "https://www.youtube.com/watch?v=cnyTQDSE884"
+            ),
+            ExerciseEntity(
+                name = "Butt Kicks",
+                category = "CARDIO",
+                type = "CARDIO",
+                bodyPart = "Hamstrings & Calves",
+                calorieBurnRate = 8.0,
+                description = "Jogging in place while kicking your heels to your glutes — great for pace and hamstring activation.",
+                howToSteps = "Jog in place, kicking each heel up toward your glutes.\nKeep knees pointing down and torso upright.\nPump your arms as if running.\nIncrease the tempo as you warm up.",
+                impactLevel = "MEDIUM",
+                youtubeUrl = "https://www.youtube.com/watch?v=oMW59TKZvaI"
+            ),
+            ExerciseEntity(
+                name = "Skater Jumps",
+                category = "CARDIO",
+                type = "CARDIO",
+                bodyPart = "Quads & Glutes",
+                calorieBurnRate = 8.5,
+                description = "Side-to-side speed-skater hops that build lateral power, balance, and conditioning.",
+                howToSteps = "Stand on one leg with a slight knee bend.\nLeap sideways onto the other foot, swinging your arms across your body.\nLand softly, letting the trailing leg sweep behind you.\nImmediately push off to the other side and keep alternating.",
+                impactLevel = "HIGH",
+                youtubeUrl = "https://www.youtube.com/watch?v=9_jLW6VkU8A"
             ),
 
             // ==================== CARDIO ====================
@@ -891,7 +973,7 @@ object DatabaseInitializer {
                 name = "Stair Climber",
                 category = "LOWER_BODY",
                 type = "CARDIO",
-                bodyPart = "Legs",
+                bodyPart = "Cardio",
                 calorieBurnRate = 9.0,
                 description = "Stair climbing machine that builds cardiovascular fitness and lower body endurance simultaneously.",
                 howToSteps = "Step onto the machine and hold rails lightly for balance only.\nStep at a comfortable but challenging pace.\nMaintain upright posture, don't lean heavily on rails.\nKeep full foot contact on each step.",
@@ -912,7 +994,15 @@ object DatabaseInitializer {
         ).map {
             it.copy(
                 equipment = inferEquipmentForExercise(it.name),
-                difficulty = difficultyFromImpactLevel(it.impactLevel).name
+                // Difficulty is proxied from impactLevel (which primarily drives rest-timer
+                // length), except for basic bodyweight cardio: those are high-impact in the
+                // rest-timer sense but skill-wise accessible, and deriving them as HARD
+                // locked Easy-ceiling users out of the CARDIO day entirely.
+                difficulty = when (it.name) {
+                    "Jumping Jacks", "High Knees", "Butt Kicks" -> com.example.workoutbuddy.data.Difficulty.EASY.name
+                    "Mountain Climbers", "Skater Jumps" -> com.example.workoutbuddy.data.Difficulty.MEDIUM.name
+                    else -> difficultyFromImpactLevel(it.impactLevel).name
+                }
             )
         }
     }
