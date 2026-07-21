@@ -49,6 +49,14 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import kotlin.math.roundToInt
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalAnimationApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -68,6 +76,7 @@ fun OnboardingScreen(
     var heightWeightTouched by remember { mutableStateOf(false) }
     var gymExperience by remember { mutableStateOf("Beginner") }
     var equipmentOwned by remember { mutableStateOf(com.example.workoutbuddy.data.Equipment.entries.toSet()) }
+    var workoutLength by remember { mutableStateOf(45) }
 
     // Keep height/weight defaults matched to gender until the user manually adjusts either
     // slider, so switching gender on the previous step doesn't silently keep stale defaults.
@@ -150,14 +159,14 @@ fun OnboardingScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
                     ) {
-                        for (i in 1..7) {
+                        for (i in 1..9) {
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
                                     .background(if (step >= i) BlueSecondary else Color.White.copy(alpha = 0.2f))
                             )
-                            if (i < 7) {
+                            if (i < 9) {
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
                         }
@@ -201,7 +210,11 @@ fun OnboardingScreen(
                                 experience = gymExperience,
                                 onExperienceChange = { gymExperience = it }
                             )
-                            6 -> OnboardingEquipmentStep(
+                            6 -> OnboardingWorkoutLengthStep(
+                                selectedMinutes = workoutLength,
+                                onSelect = { workoutLength = it }
+                            )
+                            7 -> OnboardingEquipmentStep(
                                 selected = equipmentOwned,
                                 onToggle = { equipment, owned ->
                                     equipmentOwned = if (owned) equipmentOwned + equipment else equipmentOwned - equipment
@@ -210,7 +223,10 @@ fun OnboardingScreen(
                                 onDeselectAll = { equipmentOwned = emptySet() },
                                 onSkip = { step++ }
                             )
-                            7 -> OnboardingStep5(
+                            8 -> OnboardingPermissionsStep(
+                                onDone = { step++ }
+                            )
+                            9 -> OnboardingStep5(
                                 nickname = nickname,
                                 gender = gender,
                                 age = age,
@@ -218,7 +234,7 @@ fun OnboardingScreen(
                                 weight = weight,
                                 gymExperience = gymExperience,
                                 onComplete = {
-                                    viewModel.saveUserProfile(nickname.ifBlank { "Buddy" }, age, height, weight, gender, gymExperience, equipmentOwned)
+                                    viewModel.saveUserProfile(nickname.ifBlank { "Buddy" }, age, height, weight, gender, gymExperience, equipmentOwned, workoutLength)
                                 }
                             )
                         }
@@ -249,7 +265,7 @@ fun OnboardingScreen(
                         // Only the Next button exists on this step - render it directly with
                         // fillMaxWidth() instead of inside a weighted Row, since that's a single
                         // unambiguous width source with no sibling/arrangement interaction.
-                        if (step < 7) {
+                        if (step < 8) {
                             Button(
                                 onClick = onNextClick,
                                 enabled = nextEnabled,
@@ -275,7 +291,7 @@ fun OnboardingScreen(
                                 Text("Back", fontWeight = FontWeight.Bold)
                             }
 
-                            if (step < 7) {
+                            if (step < 8) {
                                 Button(
                                     onClick = onNextClick,
                                     enabled = nextEnabled,
@@ -292,6 +308,186 @@ fun OnboardingScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+// Workout length choices shared by onboarding and Profile settings.
+val WORKOUT_LENGTH_OPTIONS = listOf(
+    15 to "15 min",
+    30 to "30 min",
+    45 to "45 min",
+    60 to "1 hour",
+    90 to "1.5 hours"
+)
+
+@Composable
+fun OnboardingWorkoutLengthStep(
+    selectedMinutes: Int,
+    onSelect: (Int) -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "How long should workouts be?",
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black, color = Color.White),
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = "We'll size your auto-generated workouts to fit. You can change this anytime in your profile.",
+            style = MaterialTheme.typography.bodyMedium.copy(color = Color.White.copy(alpha = 0.7f)),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = 12.dp)
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            WORKOUT_LENGTH_OPTIONS.forEach { (minutes, label) ->
+                val isSelected = selectedMinutes == minutes
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clickable { onSelect(minutes) },
+                    shape = MaterialTheme.shapes.medium,
+                    border = BorderStroke(1.5.dp, if (isSelected) BluePrimary else Color.White.copy(alpha = 0.2f)),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) LightBlueContainer else Color.Transparent
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = label,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) BluePrimary else Color.White,
+                            fontSize = 15.sp
+                        )
+                        if (minutes == 45) {
+                            Text(
+                                text = "Recommended",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) BluePrimary else Color.White.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OnboardingPermissionsStep(onDone: () -> Unit) {
+    val context = LocalContext.current
+
+    // Battery-optimization exemption is the second popup in the sequence; it fires after
+    // the notification permission dialog resolves (or immediately if that isn't needed).
+    val requestBatteryThenFinish: () -> Unit = {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (!powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
+            try {
+                context.startActivity(
+                    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                    }
+                )
+            } catch (_: Exception) {
+                // Some OEMs don't ship this settings screen; don't block onboarding on it.
+            }
+        }
+        onDone()
+    }
+
+    val notificationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { requestBatteryThenFinish() }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "A couple of permissions",
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black, color = Color.White),
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = "To keep your workout reminders and rest timers reliable, we need the following:",
+            style = MaterialTheme.typography.bodyMedium.copy(color = Color.White.copy(alpha = 0.7f)),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = 12.dp)
+        )
+
+        PermissionRow(
+            icon = Icons.Default.Notifications,
+            title = "Notifications",
+            description = "Daily workout reminders and rest-timer alerts."
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        PermissionRow(
+            icon = Icons.Default.BatteryChargingFull,
+            title = "Unrestricted battery",
+            description = "So timers and reminders still fire when the app is in the background."
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = {
+                val needsNotificationRequest = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                    context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+                        android.content.pm.PackageManager.PERMISSION_GRANTED
+                if (needsNotificationRequest) {
+                    notificationLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    requestBatteryThenFinish()
+                }
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+        ) {
+            Text("Grant Permissions", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+        }
+
+        TextButton(onClick = onDone, modifier = Modifier.padding(top = 8.dp)) {
+            Text("Skip for now", color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun PermissionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(Color.White.copy(alpha = 0.05f))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = BlueSecondary,
+            modifier = Modifier.size(28.dp)
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color.White)
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.7f))
+            )
         }
     }
 }
@@ -996,16 +1192,6 @@ fun OnboardingStep5(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        // Brief explainer
-        Text(
-            text = "As you complete workouts, these scores adapt. Log lifts to build strength, and cardio to level up your stamina score!",
-            style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.6f), lineHeight = 16.sp),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(28.dp))
 
         Button(
             onClick = onComplete,

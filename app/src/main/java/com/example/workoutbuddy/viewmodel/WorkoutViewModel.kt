@@ -20,6 +20,14 @@ import java.util.Calendar
 
 private const val PERFORMANCE_MULTIPLIER = 1.5
 
+// Performance Score bands: a set is "on par" when actual output lands within ±5% of the
+// expectation set by the user's strength/stamina scores (worth 70 points); beating the
+// expectation by 20%+ earns the full 100 for that set, with linear scaling in between.
+private const val ON_PAR_RATIO_LOW = 0.95
+private const val ON_PAR_RATIO_HIGH = 1.05
+private const val EXCEED_FULL_RATIO = 1.20
+private const val ON_PAR_SCORE = 70.0
+
 // Strength score gains are driven solely by genuine PRs on LIFT exercises, scaled by
 // how much the new PR beats the previous best by (in calculateSetPerformance units).
 private const val STRENGTH_PR_GAIN_FACTOR = 0.15
@@ -36,6 +44,28 @@ private const val HIGH_INTENSITY_RATIO_THRESHOLD = 0.65
 // of them may share the same bodyPart before the rest of the pool is preferred instead.
 private const val MAIN_EXERCISES_PER_WORKOUT = 4
 private const val MAX_EXERCISES_PER_BODY_PART = 2
+
+// Workout length -> (main exercise count, cardio finisher count). 45 min is the default
+// and matches the original fixed behavior (4 + 1 cardio); short workouts drop the cardio
+// finisher entirely, longer ones add main exercises (full-body moves fill out the pool).
+private fun workoutSizing(lengthMinutes: Int): Pair<Int, Int> = when {
+    lengthMinutes <= 15 -> 2 to 0
+    lengthMinutes <= 30 -> 3 to 0
+    lengthMinutes <= 45 -> MAIN_EXERCISES_PER_WORKOUT to 1
+    lengthMinutes <= 60 -> 5 to 1
+    else -> 7 to 1
+}
+
+// CARDIO-day sizing: (full-body fill count, cardio count). A cardio exercise takes roughly
+// twice the time of a strength exercise, so it counts as two slots when sizing to length:
+// 15 min -> 1 cardio; 30 -> 1 cardio + 2 full-body; 45 -> 2 + 2; 60 -> 2 + 3; 90 -> 3 + 3.
+private fun cardioWorkoutSizing(lengthMinutes: Int): Pair<Int, Int> = when {
+    lengthMinutes <= 15 -> 0 to 1
+    lengthMinutes <= 30 -> 2 to 1
+    lengthMinutes <= 45 -> 2 to 2
+    lengthMinutes <= 60 -> 3 to 2
+    else -> 3 to 3
+}
 
 // Auto-progression: lift reps climb to a cap, then weight steps up and reps reset.
 private const val LIFT_REP_CAP = 12
@@ -66,6 +96,17 @@ val RECOVERY_MUSCLE_GROUPS = listOf(
  * "Cardio" and "Full Body" intentionally map to nothing - they aren't muscle-specific enough
  * to attribute fatigue to a single group without guessing.
  */
+// Cardio moves tracked by time only — no meaningful distance metric. These skip distance
+// recommendations, anchor their default duration off the stamina score, and score off
+// duration in calculateSetPerformance (the distance/speed formula would score them 0).
+private val TIME_ONLY_CARDIO = listOf(
+    "Jump Rope", "Jumping Jacks", "High Knees", "Burpees",
+    "Mountain Climbers", "Butt Kicks", "Skater Jumps", "Shadow Boxing"
+)
+
+fun isTimeOnlyCardio(name: String): Boolean =
+    TIME_ONLY_CARDIO.any { name.contains(it, ignoreCase = true) }
+
 private fun muscleGroupsForBodyPart(bodyPart: String): List<String> {
     val parts = bodyPart.split("&").map { it.trim() }
     return parts.mapNotNull { part ->
@@ -75,7 +116,7 @@ private fun muscleGroupsForBodyPart(bodyPart: String): List<String> {
                 part.equals("Lats", ignoreCase = true) ||
                 part.contains("Traps", ignoreCase = true) -> "Back"
             part.contains("Deltoid", ignoreCase = true) ||
-                part.equals("Shoulders", ignoreCase = true) -> "Shoulders"
+                part.contains("Shoulders", ignoreCase = true) -> "Shoulders"
             part.contains("Biceps", ignoreCase = true) ||
                 part.contains("Brachialis", ignoreCase = true) -> "Biceps"
             part.contains("Triceps", ignoreCase = true) -> "Triceps"
@@ -113,6 +154,55 @@ class WorkoutViewModel(
     // Displayed/Animated Dial Values
     val displayedIntensity = MutableStateFlow(0.0)
     val displayedCalories = MutableStateFlow(0.0)
+
+    // Performance Score (0-100): how the user is doing against the expectations implied by
+    // their strength/stamina scores (each set's recommended values). Per completed set:
+    // sub-par scales toward 0, on-par (within ±5% of expected) is 50, and exceeding
+    // expectations scales up to 100 — so a perfect 100 requires beating expectations on
+    // every set. Null until at least one set has been completed.
+    val performanceScore: StateFlow<Int?> = combine(activeExerciseStates, userProfile) { states, profile ->
+        val bodyWeight = profile?.weight ?: 70.0
+        val setScores = states.flatMap { state ->
+            state.sets.filter { it.isCompleted }.map { set ->
+                scoreCompletedSetAgainstExpectation(set, state.exercise, bodyWeight)
+            }
+        }
+        if (setScores.isEmpty()) null else setScores.average().let { Math.round(it).toInt() }.coerceIn(0, 100)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private fun scoreCompletedSetAgainstExpectation(
+        set: WorkoutSetEntity,
+        exercise: ExerciseEntity,
+        bodyWeight: Double
+    ): Double {
+        val expected = calculateSetPerformance(
+            exerciseName = exercise.name,
+            weight = set.recommendedWeight,
+            reps = set.recommendedReps,
+            time = set.recommendedTime,
+            distance = set.recommendedDistance,
+            exerciseType = exercise.type,
+            userBodyWeight = bodyWeight,
+            inclinePct = set.inclinePct
+        )
+        if (expected <= 0.0) return ON_PAR_SCORE
+        val actual = calculateSetPerformance(
+            exerciseName = exercise.name,
+            weight = set.weight,
+            reps = set.reps,
+            time = set.time,
+            distance = set.distance,
+            exerciseType = exercise.type,
+            userBodyWeight = bodyWeight,
+            inclinePct = set.inclinePct
+        )
+        val ratio = actual / expected
+        return when {
+            ratio < ON_PAR_RATIO_LOW -> ON_PAR_SCORE * (ratio / ON_PAR_RATIO_LOW)
+            ratio <= ON_PAR_RATIO_HIGH -> ON_PAR_SCORE
+            else -> ON_PAR_SCORE + (100.0 - ON_PAR_SCORE) * ((ratio - ON_PAR_RATIO_HIGH) / (EXCEED_FULL_RATIO - ON_PAR_RATIO_HIGH))
+        }.coerceIn(0.0, 100.0)
+    }
 
 
 
@@ -333,9 +423,32 @@ class WorkoutViewModel(
         // Selection (gates + Always/Often/Less/Never weighting, applied identically to the
         // main category pool and the cardio pool) lives in selectWorkoutExercises - kept as a
         // pure function so it's unit-testable without Room/coroutines.
-        val categoryExercises = repository.getExercisesByCategory(category).filter { it.type != "CARDIO" }
         val allExs = repository.getAllExercises().filter { it.isNotEmpty() }.first()
-        val cardioExercises = allExs.filter { it.type == "CARDIO" }
+        val isCardioDay = category == "CARDIO"
+        val lengthMinutes = profile?.workoutLengthMinutes ?: 45
+        val (mainCount, cardioCount) = if (isCardioDay) {
+            cardioWorkoutSizing(lengthMinutes)
+        } else {
+            workoutSizing(lengthMinutes)
+        }
+        val categoryExercises = if (isCardioDay) {
+            // Cardio day: proper cardio exercises take the cardio slots; full-body moves
+            // of any type (deadlifts, burpees, jumping jacks, ...) fill the rest.
+            allExs.filter { it.bodyPart.contains("Full Body", ignoreCase = true) }
+        } else {
+            // Full Body exercises (deadlifts, burpee-style moves, ...) are valid on any day,
+            // not just the category they were seeded under - they also serve as the filler
+            // pool that lets longer workouts reach their exercise count.
+            (repository.getExercisesByCategory(category) +
+                allExs.filter { it.bodyPart.contains("Full Body", ignoreCase = true) })
+                .distinctBy { it.id }
+                .filter { it.type != "CARDIO" }
+        }
+        val cardioExercises = if (isCardioDay) {
+            allExs.filter { it.type == "CARDIO" && !it.bodyPart.contains("Full Body", ignoreCase = true) }
+        } else {
+            allExs.filter { it.type == "CARDIO" }
+        }
 
         val exerciseIdsToUse = selectWorkoutExercises(
             categoryPool = categoryExercises,
@@ -343,8 +456,9 @@ class WorkoutViewModel(
             ownedEquipment = ownedEquipment,
             difficultyCeiling = difficultyCeiling,
             preferences = preferences,
-            count = MAIN_EXERCISES_PER_WORKOUT,
-            maxPerBodyPart = MAX_EXERCISES_PER_BODY_PART
+            count = mainCount,
+            maxPerBodyPart = if (isCardioDay) Int.MAX_VALUE else MAX_EXERCISES_PER_BODY_PART,
+            cardioCount = cardioCount
         ).toMutableList()
 
         val setsToInsert = mutableListOf<WorkoutSetEntity>()
@@ -384,10 +498,10 @@ class WorkoutViewModel(
                         if (lastSet != null) {
                             val (nextDistance, nextTime) = progressCardio(lastSet.distance, lastSet.time ?: 0)
                             recTime = nextTime
-                            recDistance = if (exercise.name.contains("Jump Rope", ignoreCase = true)) null else nextDistance
+                            recDistance = if (isTimeOnlyCardio(exercise.name)) null else nextDistance
                         } else {
                             recTime = getStandardStartDuration(exercise.name, staminaScore)
-                            recDistance = if (exercise.name.contains("Jump Rope", ignoreCase = true)) null else getStandardStartDistance(exercise.name, staminaScore)
+                            recDistance = if (isTimeOnlyCardio(exercise.name)) null else getStandardStartDistance(exercise.name, staminaScore)
                         }
                     }
                     "HOLD" -> {
@@ -484,7 +598,7 @@ class WorkoutViewModel(
      *   score of 50 maps to a 1-minute default.
      */
     private fun getStandardStartDuration(name: String, staminaScore: Double): Int {
-        if (name.contains("Jump Rope", ignoreCase = true)) {
+        if (isTimeOnlyCardio(name)) {
             val staminaFactor = staminaScore / 50.0
             val seconds = staminaFactor * 60.0
             return (Math.round(seconds / 15.0) * 15).toInt().coerceAtLeast(15)
@@ -2088,7 +2202,8 @@ class WorkoutViewModel(
         weight: Double,
         gender: String,
         gymExperience: String,
-        equipmentOwned: Set<com.example.workoutbuddy.data.Equipment> = com.example.workoutbuddy.data.Equipment.entries.toSet()
+        equipmentOwned: Set<com.example.workoutbuddy.data.Equipment> = com.example.workoutbuddy.data.Equipment.entries.toSet(),
+        workoutLengthMinutes: Int = 45
     ) {
         viewModelScope.launch {
             val initialStrength = calculateInitialStrengthScore(age, height, weight, gender, gymExperience)
@@ -2107,7 +2222,8 @@ class WorkoutViewModel(
                 // Onboarding doesn't ask for a difficulty ceiling directly anymore - it's
                 // proxied from gym experience so new users start at a sensible default and can
                 // still change it later from Profile settings.
-                difficultyCeiling = com.example.workoutbuddy.data.difficultyFromGymExperience(gymExperience).name
+                difficultyCeiling = com.example.workoutbuddy.data.difficultyFromGymExperience(gymExperience).name,
+                workoutLengthMinutes = workoutLengthMinutes
             )
             repository.saveUserProfile(profile)
 
@@ -2182,6 +2298,17 @@ class WorkoutViewModel(
         viewModelScope.launch {
             val profile = repository.getUserProfile() ?: return@launch
             repository.saveUserProfile(profile.copy(difficultyCeiling = difficulty.name))
+            _userProfile.value = repository.getUserProfile()
+            regenerateActiveDraftIfSafe()
+        }
+    }
+
+    // Changes the target workout length from Profile settings (or onboarding). Regenerates the
+    // active draft so the new exercise count applies immediately.
+    fun setWorkoutLength(minutes: Int) {
+        viewModelScope.launch {
+            val profile = repository.getUserProfile() ?: return@launch
+            repository.saveUserProfile(profile.copy(workoutLengthMinutes = minutes))
             _userProfile.value = repository.getUserProfile()
             regenerateActiveDraftIfSafe()
         }
@@ -2333,9 +2460,10 @@ class WorkoutViewModel(
             }
             "CARDIO" -> {
                 val tSec = time ?: 1
-                if (exerciseName.contains("Jump Rope", ignoreCase = true)) {
-                    // No distance is ever recorded for Jump Rope, so the distance/speed formula
-                    // below would always score it 0 - score off duration instead.
+                if (isTimeOnlyCardio(exerciseName)) {
+                    // No distance is ever recorded for time-only cardio (Jump Rope, Jumping
+                    // Jacks, Burpees, ...), so the distance/speed formula below would always
+                    // score it 0 - score off duration instead.
                     tSec * 0.2
                 } else if (exerciseName.contains("Battle Ropes", ignoreCase = true)) {
                     // Battle Ropes' "distance" is an artificial metric only used to derive a
@@ -2422,44 +2550,7 @@ class WorkoutViewModel(
             displayedIntensity.value = it.intensityScore
             displayedCalories.value = it.totalCalories
         }
-        viewModelScope.launch {
-            if (newlyCompletedSetIds.isEmpty()) return@launch
-            val activeId = activeWorkout.value?.id ?: return@launch
-            val sets = repository.getSetsForWorkout(activeId)
-                .filter { it.exerciseId == exerciseId && it.id in newlyCompletedSetIds }
-            val exercise = repository.getExerciseById(exerciseId) ?: return@launch
-            val profile = repository.getUserProfile()
-            val userBodyWeight = profile?.weight ?: 70.0
-
-            var totalStrength = 0.0
-            var totalCalories = 0.0
-
-            for (set in sets) {
-                totalStrength += calculateSetPerformance(
-                    exerciseName = exercise.name,
-                    weight = set.weight ?: set.recommendedWeight,
-                    reps = set.reps ?: set.recommendedReps,
-                    time = set.time ?: set.recommendedTime,
-                    distance = set.distance ?: set.recommendedDistance,
-                    exerciseType = exercise.type,
-                    userBodyWeight = userBodyWeight,
-                    inclinePct = set.inclinePct
-                )
-                totalCalories += calculateSetCalories(set, exercise)
-            }
-
-            newlyCompletedSetIds.clear()
-
-            if (totalStrength > 0.0 || totalCalories > 0.0) {
-                if (totalStrength > 0.0) {
-                    triggerFloatingNumber("+${totalStrength.toInt()}", colorType = "red")
-                }
-                if (totalCalories > 0.0) {
-                    delay(1000)
-                    triggerFloatingNumber("+${totalCalories.toInt()}", colorType = "yellow")
-                }
-            }
-        }
+        newlyCompletedSetIds.clear()
     }
 
     fun dismissRecordCelebration() {

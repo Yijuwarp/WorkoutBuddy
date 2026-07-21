@@ -20,9 +20,10 @@ class TimerExpiredReceiver : BroadcastReceiver() {
         val isRest = intent.getBooleanExtra("isRest", true)
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "timer_channel"
+        val channelId = TIMER_CHANNEL_ID
 
-        // Create channel if Android O+
+        // Create channel if Android O+ (normally already created by WorkoutApplication; this
+        // is a safety net and must declare the same explicit sound).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
@@ -32,6 +33,13 @@ class TimerExpiredReceiver : BroadcastReceiver() {
                 description = "Notifications for rest and exercise timers completion"
                 enableLights(true)
                 enableVibration(true)
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
             }
             notificationManager.createNotificationChannel(channel)
         }
@@ -49,7 +57,7 @@ class TimerExpiredReceiver : BroadcastReceiver() {
         val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_notif_dumbbell)
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

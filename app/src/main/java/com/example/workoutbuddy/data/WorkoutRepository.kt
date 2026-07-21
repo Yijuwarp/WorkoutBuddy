@@ -8,8 +8,36 @@ import kotlinx.coroutines.withContext
 class WorkoutRepository(private val workoutDao: WorkoutDao) {
 
     suspend fun seedDatabaseIfEmpty() = withContext(Dispatchers.IO) {
+        // Full seed on first run. On later runs, top up seed exercises added in an app
+        // update (matched by name) and refresh the content fields of existing ones, so
+        // fixes to descriptions/how-tos/video links reach existing installs. Scoring
+        // fields and user-created exercises are left untouched.
         if (workoutDao.getExerciseCount() == 0) {
             workoutDao.insertExercises(DatabaseInitializer.getSeedExercises())
+            return@withContext
+        }
+        val existingByName = workoutDao.getAllExercisesOnce().associateBy { it.name }
+        val toUpsert = DatabaseInitializer.getSeedExercises().mapNotNull { seed ->
+            val existing = existingByName[seed.name]
+            when {
+                existing == null -> seed
+                existing.description != seed.description ||
+                    existing.howToSteps != seed.howToSteps ||
+                    existing.youtubeUrl != seed.youtubeUrl ||
+                    existing.bodyPart != seed.bodyPart ||
+                    existing.difficulty != seed.difficulty ->
+                    existing.copy(
+                        description = seed.description,
+                        howToSteps = seed.howToSteps,
+                        youtubeUrl = seed.youtubeUrl,
+                        bodyPart = seed.bodyPart,
+                        difficulty = seed.difficulty
+                    )
+                else -> null
+            }
+        }
+        if (toUpsert.isNotEmpty()) {
+            workoutDao.insertExercises(toUpsert)
         }
     }
 

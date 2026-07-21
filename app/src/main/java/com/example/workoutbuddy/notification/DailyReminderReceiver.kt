@@ -24,7 +24,7 @@ class DailyReminderReceiver : BroadcastReceiver() {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(com.example.workoutbuddy.R.drawable.ic_notif_dumbbell)
             .setContentTitle("Time to work out!")
             .setContentText("Your workout window is coming up. Let's go 💪")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -40,7 +40,7 @@ class DailyReminderReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val CHANNEL_ID = "daily_reminder"
+        const val CHANNEL_ID = "daily_reminder_v2"
         const val NOTIFICATION_ID = 2001
     }
 }

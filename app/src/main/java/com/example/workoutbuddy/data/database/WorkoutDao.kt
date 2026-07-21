@@ -15,6 +15,12 @@ interface WorkoutDao {
     @Query("SELECT COUNT(*) FROM exercises")
     fun getExerciseCount(): Int
 
+    @Query("SELECT name FROM exercises")
+    fun getAllExerciseNames(): List<String>
+
+    @Query("SELECT * FROM exercises")
+    fun getAllExercisesOnce(): List<ExerciseEntity>
+
     @Query("SELECT * FROM exercises")
     fun getAllExercises(): Flow<List<ExerciseEntity>>
 

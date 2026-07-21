@@ -41,12 +41,7 @@ fun BodyScreen(
             .fillMaxSize()
             .background(LightBackground)
     ) {
-        Text(
-            text = "Body",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
-            color = TextDark,
-            modifier = Modifier.padding(16.dp)
-        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         Row(
             modifier = Modifier

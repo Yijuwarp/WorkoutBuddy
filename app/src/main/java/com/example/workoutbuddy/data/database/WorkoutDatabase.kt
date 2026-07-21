@@ -17,7 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         EquipmentPresetEntity::class,
         MuscleGroupRecoveryEntity::class
     ],
-    version = 19,
+    version = 20,
     exportSchema = false
 )
 abstract class WorkoutDatabase : RoomDatabase() {
@@ -86,6 +86,14 @@ abstract class WorkoutDatabase : RoomDatabase() {
             }
         }
 
+        // Adds workoutLengthMinutes, the target length of auto-generated workouts. Existing
+        // profiles default to 45, which matches the pre-existing generation behavior exactly.
+        private val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_profile ADD COLUMN workoutLengthMinutes INTEGER NOT NULL DEFAULT 45")
+            }
+        }
+
         fun getDatabase(context: Context): WorkoutDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -93,7 +101,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
                     WorkoutDatabase::class.java,
                     "workout_database"
                 )
-                .addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
+                .addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
