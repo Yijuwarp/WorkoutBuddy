@@ -383,6 +383,27 @@ fun OnboardingWorkoutLengthStep(
 fun OnboardingPermissionsStep(onDone: () -> Unit) {
     val context = LocalContext.current
 
+    // Exact-alarm ("Alarms & reminders") access is the last screen in the sequence. On
+    // Android 12+ it's a special access the user toggles in settings; if it's already
+    // granted (Android 12 auto-grants it) this is skipped entirely.
+    val requestExactAlarmsThenFinish: () -> Unit = {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                try {
+                    context.startActivity(
+                        Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+                    )
+                } catch (_: Exception) {
+                    // Some OEMs don't ship this settings screen; don't block onboarding on it.
+                }
+            }
+        }
+        onDone()
+    }
+
     // Battery-optimization exemption is the second popup in the sequence; it fires after
     // the notification permission dialog resolves (or immediately if that isn't needed).
     val requestBatteryThenFinish: () -> Unit = {
@@ -398,7 +419,7 @@ fun OnboardingPermissionsStep(onDone: () -> Unit) {
                 // Some OEMs don't ship this settings screen; don't block onboarding on it.
             }
         }
-        onDone()
+        requestExactAlarmsThenFinish()
     }
 
     val notificationLauncher = rememberLauncherForActivityResult(
@@ -428,6 +449,12 @@ fun OnboardingPermissionsStep(onDone: () -> Unit) {
             icon = Icons.Default.BatteryChargingFull,
             title = "Unrestricted battery",
             description = "So timers and reminders still fire when the app is in the background."
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        PermissionRow(
+            icon = Icons.Default.Alarm,
+            title = "Alarms & reminders",
+            description = "Lets rest timers and workout reminders fire exactly on time."
         )
 
         Spacer(modifier = Modifier.height(24.dp))
