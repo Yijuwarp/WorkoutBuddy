@@ -22,7 +22,6 @@ local.properties
 /tools/exercise_import/wger_trans.json
 /tools/exercise_import/wger_imgs.json
 
-# Working notes / PRDs and debug artifacts - local only
-/prds/
+# Working notes and debug artifacts - local only
 window_dump.xml
 *.output
