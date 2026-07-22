@@ -21,7 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInWindow
@@ -40,6 +43,8 @@ import com.example.workoutbuddy.theme.*
 import com.example.workoutbuddy.ui.components.*
 import com.example.workoutbuddy.ui.util.LocalSoundPlayer
 import com.example.workoutbuddy.ui.util.pressScale
+import com.example.workoutbuddy.ui.util.shareAchievementScreenshot
+import kotlinx.coroutines.launch
 import com.example.workoutbuddy.viewmodel.WorkoutViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -521,6 +526,11 @@ fun WorkoutScreen(
             )
             val soundPlayer = LocalSoundPlayer.current
             val context = LocalContext.current
+            val shareLayer = rememberGraphicsLayer()
+            val shareScope = rememberCoroutineScope()
+            // Once the user shares, the sharesheet covers the app — don't auto-dismiss
+            // underneath it or the celebration is gone when they come back.
+            val heldForShare = remember(celeb.exerciseName) { mutableStateOf(false) }
             // Keyed on the exercise, not the whole state object: a value-only refresh of the
             // pending record (user edited the set after completing it) must not replay the
             // chime or restart the entrance animation.
@@ -538,7 +548,7 @@ fun WorkoutScreen(
                 // Auto-dismiss so the celebration never blocks a mid-workout user;
                 // keyed on `celeb`, so a queued second record restarts the window.
                 kotlinx.coroutines.delay(3000)
-                viewModel.dismissRecordCelebration()
+                if (!heldForShare.value) viewModel.dismissRecordCelebration()
             }
             Dialog(onDismissRequest = { viewModel.dismissRecordCelebration() }) {
                 Card(
@@ -546,7 +556,11 @@ fun WorkoutScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                         .scale(0.8f + 0.2f * cardEntrance.value)
-                        .alpha(cardEntrance.value),
+                        .alpha(cardEntrance.value)
+                        .drawWithContent {
+                            shareLayer.record { this@drawWithContent.drawContent() }
+                            drawLayer(shareLayer)
+                        },
                     shape = MaterialTheme.shapes.extraLarge,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.5.dp, GoldPR.copy(alpha = shimmerPulse)),
@@ -641,15 +655,62 @@ fun WorkoutScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        Button(
-                            onClick = { viewModel.dismissRecordCelebration() },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = GoldPR),
-                            shape = MaterialTheme.shapes.medium
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text("Awesome!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            OutlinedButton(
+                                onClick = {
+                                    heldForShare.value = true
+                                    shareScope.launch {
+                                        shareAchievementScreenshot(
+                                            context,
+                                            shareLayer,
+                                            "New record on ${celeb.exerciseName}: ${celeb.newRecord} (up from ${celeb.oldRecord})! 🏆"
+                                        )
+                                    }
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                border = BorderStroke(1.5.dp, GoldPR),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = null,
+                                    tint = GoldPR,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "Brag",
+                                    color = GoldPR,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                            Button(
+                                onClick = { viewModel.dismissRecordCelebration() },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldPR),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Text(
+                                    "Awesome!",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 }
@@ -902,6 +963,9 @@ fun WorkoutSummaryDialog(
     onUpdateDuration: (Long) -> Unit
 ) {
     var showEditDurationDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val shareLayer = rememberGraphicsLayer()
+    val shareScope = rememberCoroutineScope()
     val entrance = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         entrance.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
@@ -913,7 +977,11 @@ fun WorkoutSummaryDialog(
                 .fillMaxWidth()
                 .padding(16.dp)
                 .scale(0.85f + 0.15f * entrance.value)
-                .alpha(entrance.value),
+                .alpha(entrance.value)
+                .drawWithContent {
+                    shareLayer.record { this@drawWithContent.drawContent() }
+                    drawLayer(shareLayer)
+                },
             shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
@@ -1076,13 +1144,66 @@ fun WorkoutSummaryDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = onDismiss,
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                    shape = MaterialTheme.shapes.medium
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Done", fontWeight = FontWeight.Bold)
+                    OutlinedButton(
+                        onClick = {
+                            shareScope.launch {
+                                val stats = buildList {
+                                    add("${summary.totalCalories.toInt()} kcal burned")
+                                    if (summary.totalVolumeKg > 0) add("${summary.totalVolumeKg.toInt()} kg lifted")
+                                    if (summary.prCount > 0) add("${summary.prCount} record${if (summary.prCount > 1) "s" else ""} broken 🏆")
+                                }
+                                shareAchievementScreenshot(
+                                    context,
+                                    shareLayer,
+                                    "Just crushed a workout on WorkoutBuddy: ${stats.joinToString(", ")}! 💪"
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        border = BorderStroke(1.5.dp, BluePrimary),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = null,
+                            tint = BluePrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "Share",
+                            color = BluePrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text(
+                            "Done",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
                 }
             }
         }
