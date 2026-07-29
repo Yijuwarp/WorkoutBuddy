@@ -25,3 +25,5 @@ local.properties
 # Working notes and debug artifacts - local only
 window_dump.xml
 *.output
+scratch_*.txt
+

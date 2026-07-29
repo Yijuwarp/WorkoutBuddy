@@ -48,88 +48,15 @@ private const val MAX_EXERCISES_PER_BODY_PART = 2
 // Workout length -> (main exercise count, cardio finisher count). 45 min is the default
 // and matches the original fixed behavior (4 + 1 cardio); short workouts drop the cardio
 // finisher entirely, longer ones add main exercises (full-body moves fill out the pool).
-private fun workoutSizing(lengthMinutes: Int): Pair<Int, Int> = when {
-    lengthMinutes <= 15 -> 2 to 0
-    lengthMinutes <= 30 -> 3 to 0
-    lengthMinutes <= 45 -> MAIN_EXERCISES_PER_WORKOUT to 1
-    lengthMinutes <= 60 -> 5 to 1
-    else -> 7 to 1
-}
-
-// CARDIO-day sizing: (full-body fill count, cardio count). A cardio exercise takes roughly
-// twice the time of a strength exercise, so it counts as two slots when sizing to length:
-// 15 min -> 1 cardio; 30 -> 1 cardio + 2 full-body; 45 -> 2 + 2; 60 -> 2 + 3; 90 -> 3 + 3.
-private fun cardioWorkoutSizing(lengthMinutes: Int): Pair<Int, Int> = when {
-    lengthMinutes <= 15 -> 0 to 1
-    lengthMinutes <= 30 -> 2 to 1
-    lengthMinutes <= 45 -> 2 to 2
-    lengthMinutes <= 60 -> 3 to 2
-    else -> 3 to 3
-}
-
-// Auto-progression: lift reps climb to a cap, then weight steps up and reps reset.
-private const val LIFT_REP_CAP = 12
-private const val LIFT_REPS_RESET = 8
-// Auto-progression: cardio distance/time both scale by this factor each session, holding pace constant.
-private const val CARDIO_PROGRESSION_FACTOR = 1.05
-
-// Muscle group recovery: fatigue per set scales with how hard the set was relative to the
-// user's strength/stamina score. BASE_FATIGUE_BUMP is the bump applied when performance
-// exactly equals the user's score (i.e. a "normal" set). Sets below that score cost less;
-// sets above cost more, clamped between FATIGUE_INTENSITY_MIN and FATIGUE_INTENSITY_MAX
-// so a very easy set still costs something and one extreme set can't fully drain the bar.
-// Recovery drains fatigue at a fixed rate; a fully fatigued muscle takes 5 days to recover.
-private const val BASE_FATIGUE_BUMP = 25.0
-private const val FATIGUE_INTENSITY_MIN = 0.2   // floor: ≥5% bar per set
-private const val FATIGUE_INTENSITY_MAX = 2.0   // ceiling: ≤50% bar per set
-private const val RECOVERY_PCT_PER_DAY = 20.0
-private const val MS_PER_DAY = 86_400_000.0
-
-// Canonical individual muscles the Body tab's Recovery view tracks/displays, in display order.
-val RECOVERY_MUSCLE_GROUPS = listOf(
-    "Chest", "Back", "Shoulders", "Biceps", "Triceps", "Quads", "Hamstrings", "Glutes", "Calves", "Core"
-)
-
-/**
- * Maps a free-text ExerciseEntity.bodyPart (seed data uses combos like "Chest & Lats" and
- * qualifiers like "Upper Chest"/"Front Deltoids") onto the canonical muscle list above.
- * "Cardio" and "Full Body" intentionally map to nothing - they aren't muscle-specific enough
- * to attribute fatigue to a single group without guessing.
- */
-// Cardio moves tracked by time only — no meaningful distance metric. These skip distance
-// recommendations, anchor their default duration off the stamina score, and score off
-// duration in calculateSetPerformance (the distance/speed formula would score them 0).
-private val TIME_ONLY_CARDIO = listOf(
-    "Jump Rope", "Jumping Jacks", "High Knees", "Burpees",
-    "Mountain Climbers", "Butt Kicks", "Skater Jumps", "Shadow Boxing"
-)
-
-fun isTimeOnlyCardio(name: String): Boolean =
-    TIME_ONLY_CARDIO.any { name.contains(it, ignoreCase = true) }
-
-private fun muscleGroupsForBodyPart(bodyPart: String): List<String> {
-    val parts = bodyPart.split("&").map { it.trim() }
-    return parts.mapNotNull { part ->
-        when {
-            part.contains("Chest", ignoreCase = true) -> "Chest"
-            part.equals("Back", ignoreCase = true) ||
-                part.equals("Lats", ignoreCase = true) ||
-                part.contains("Traps", ignoreCase = true) -> "Back"
-            part.contains("Deltoid", ignoreCase = true) ||
-                part.contains("Shoulders", ignoreCase = true) -> "Shoulders"
-            part.contains("Biceps", ignoreCase = true) ||
-                part.contains("Brachialis", ignoreCase = true) -> "Biceps"
-            part.contains("Triceps", ignoreCase = true) -> "Triceps"
-            part.contains("Quads", ignoreCase = true) -> "Quads"
-            part.contains("Hamstrings", ignoreCase = true) -> "Hamstrings"
-            part.contains("Glutes", ignoreCase = true) -> "Glutes"
-            part.contains("Calves", ignoreCase = true) -> "Calves"
-            part.equals("Core", ignoreCase = true) -> "Core"
-            else -> null // "Legs" (too ambiguous), "Cardio", "Full Body", or unrecognized
-        }
-    }.distinct()
-}
-
+private fun workoutSizing(lengthMinutes: Int): Pair<Int, Int> = WorkoutProgressionHelper.workoutSizing(lengthMinutes)
+private fun cardioWorkoutSizing(lengthMinutes: Int): Pair<Int, Int> = WorkoutProgressionHelper.cardioWorkoutSizing(lengthMinutes)
+private fun progressLift(lastWeight: Double, lastReps: Int): Pair<Double, Int> = WorkoutProgressionHelper.progressLift(lastWeight, lastReps)
+private fun progressCardio(lastDistance: Double?, lastTime: Int): Pair<Double?, Int> = WorkoutProgressionHelper.progressCardio(lastDistance, lastTime)
+private fun getAdaptiveStartWeight(name: String, strengthScore: Double, bodyWeight: Double): Double = WorkoutProgressionHelper.getAdaptiveStartWeight(name, strengthScore, bodyWeight)
+private fun getStandardStartDuration(name: String, staminaScore: Double): Int = WorkoutProgressionHelper.getStandardStartDuration(name, staminaScore)
+private fun getStandardStartDistance(name: String, staminaScore: Double): Double = WorkoutProgressionHelper.getStandardStartDistance(name, staminaScore)
+fun isTimeOnlyCardio(name: String): Boolean = WorkoutPerformanceCalculator.isTimeOnlyCardio(name)
+private fun muscleGroupsForBodyPart(bodyPart: String): List<String> = WorkoutPerformanceCalculator.muscleGroupsForBodyPart(bodyPart)
 class WorkoutViewModel(
     application: Application,
     private val repository: WorkoutRepository
@@ -174,35 +101,7 @@ class WorkoutViewModel(
         set: WorkoutSetEntity,
         exercise: ExerciseEntity,
         bodyWeight: Double
-    ): Double {
-        val expected = calculateSetPerformance(
-            exerciseName = exercise.name,
-            weight = set.recommendedWeight,
-            reps = set.recommendedReps,
-            time = set.recommendedTime,
-            distance = set.recommendedDistance,
-            exerciseType = exercise.type,
-            userBodyWeight = bodyWeight,
-            inclinePct = set.inclinePct
-        )
-        if (expected <= 0.0) return ON_PAR_SCORE
-        val actual = calculateSetPerformance(
-            exerciseName = exercise.name,
-            weight = set.weight,
-            reps = set.reps,
-            time = set.time,
-            distance = set.distance,
-            exerciseType = exercise.type,
-            userBodyWeight = bodyWeight,
-            inclinePct = set.inclinePct
-        )
-        val ratio = actual / expected
-        return when {
-            ratio < ON_PAR_RATIO_LOW -> ON_PAR_SCORE * (ratio / ON_PAR_RATIO_LOW)
-            ratio <= ON_PAR_RATIO_HIGH -> ON_PAR_SCORE
-            else -> ON_PAR_SCORE + (100.0 - ON_PAR_SCORE) * ((ratio - ON_PAR_RATIO_HIGH) / (EXCEED_FULL_RATIO - ON_PAR_RATIO_HIGH))
-        }.coerceIn(0.0, 100.0)
-    }
+    ): Double = WorkoutPerformanceCalculator.scoreCompletedSetAgainstExpectation(set, exercise, bodyWeight)
 
 
 
@@ -432,22 +331,21 @@ class WorkoutViewModel(
             workoutSizing(lengthMinutes)
         }
         val categoryExercises = if (isCardioDay) {
-            // Cardio day: proper cardio exercises take the cardio slots; full-body moves
-            // of any type (deadlifts, burpees, jumping jacks, ...) fill the rest.
-            allExs.filter { it.bodyPart.contains("Full Body", ignoreCase = true) }
+            // Cardio day: actual cardio exercises take the hero cardio slots; full-body moves
+            // (burpees, jumping jacks, mountain climbers, deadlifts, ...) fill the rest.
+            allExs.filter { it.category == "FULL_BODY" || it.bodyPart.contains("Full Body", ignoreCase = true) }
         } else {
-            // Full Body exercises (deadlifts, burpee-style moves, ...) are valid on any day,
-            // not just the category they were seeded under - they also serve as the filler
-            // pool that lets longer workouts reach their exercise count.
+            // Full Body exercises are valid on any day (they also serve as the filler pool
+            // that lets longer workouts reach their exercise count).
             (repository.getExercisesByCategory(category) +
-                allExs.filter { it.bodyPart.contains("Full Body", ignoreCase = true) })
+                allExs.filter { it.category == "FULL_BODY" || it.bodyPart.contains("Full Body", ignoreCase = true) })
                 .distinctBy { it.id }
-                .filter { it.type != "CARDIO" }
+                .filter { it.type != "CARDIO" || category == "FULL_BODY" }
         }
         val cardioExercises = if (isCardioDay) {
-            allExs.filter { it.type == "CARDIO" && !it.bodyPart.contains("Full Body", ignoreCase = true) }
+            allExs.filter { it.category == "CARDIO" && it.type == "CARDIO" }
         } else {
-            allExs.filter { it.type == "CARDIO" }
+            allExs.filter { it.category == "CARDIO" || (it.type == "CARDIO" && it.category != "FULL_BODY") }
         }
 
         val exerciseIdsToUse = selectWorkoutExercises(
@@ -531,10 +429,10 @@ class WorkoutViewModel(
      * plate increment (2.5kg) and reps reset to a fixed starting value (8).
      */
     private fun progressLift(lastWeight: Double, lastReps: Int): Pair<Double, Int> {
-        return if (lastReps < LIFT_REP_CAP) {
+        return if (lastReps < WorkoutProgressionHelper.LIFT_REP_CAP) {
             lastWeight to (lastReps + 1)
         } else {
-            nextWeightIncrement(lastWeight) to LIFT_REPS_RESET
+            nextWeightIncrement(lastWeight) to WorkoutProgressionHelper.LIFT_REPS_RESET
         }
     }
 
@@ -545,8 +443,8 @@ class WorkoutViewModel(
      * distance and time, which holds pace constant since both scale by the same factor.
      */
     private fun progressCardio(lastDistance: Double?, lastTime: Int): Pair<Double?, Int> {
-        val nextDistance = lastDistance?.let { it * CARDIO_PROGRESSION_FACTOR }
-        val nextTime = Math.round(lastTime * CARDIO_PROGRESSION_FACTOR).toInt()
+        val nextDistance = lastDistance?.let { it * WorkoutProgressionHelper.CARDIO_PROGRESSION_FACTOR }
+        val nextTime = Math.round(lastTime * WorkoutProgressionHelper.CARDIO_PROGRESSION_FACTOR).toInt()
         return nextDistance to nextTime
     }
 
@@ -1888,8 +1786,8 @@ class WorkoutViewModel(
      * Bumps fatigue for every individual muscle a set's exercise.bodyPart maps to.
      * Decays existing fatigue by elapsed time, then adds a dynamic bump scaled by how hard
      * the set was relative to the user's strength (LIFT/HOLD) or stamina (CARDIO) score.
-     * A set performed exactly at the user's score level adds BASE_FATIGUE_BUMP (25%).
-     * The intensity multiplier is clamped to [FATIGUE_INTENSITY_MIN, FATIGUE_INTENSITY_MAX].
+     * A set performed exactly at the user's score level adds WorkoutProgressionHelper.BASE_FATIGUE_BUMP (25%).
+     * The intensity multiplier is clamped to [WorkoutProgressionHelper.FATIGUE_INTENSITY_MIN, WorkoutProgressionHelper.FATIGUE_INTENSITY_MAX].
      */
     private suspend fun applyFatigue(set: WorkoutSetEntity, exercise: ExerciseEntity) {
         val now = System.currentTimeMillis()
@@ -1910,16 +1808,16 @@ class WorkoutViewModel(
             inclinePct = set.inclinePct
         )
         val intensityMultiplier = (perf / relevantScore)
-            .coerceIn(FATIGUE_INTENSITY_MIN, FATIGUE_INTENSITY_MAX)
-        val fatigueBump = BASE_FATIGUE_BUMP * intensityMultiplier
+            .coerceIn(WorkoutProgressionHelper.FATIGUE_INTENSITY_MIN, WorkoutProgressionHelper.FATIGUE_INTENSITY_MAX)
+        val fatigueBump = WorkoutProgressionHelper.BASE_FATIGUE_BUMP * intensityMultiplier
 
         for (muscle in muscleGroupsForBodyPart(exercise.bodyPart)) {
             val existing = repository.getRecovery(muscle)
             val decayed = if (existing == null) {
                 0.0
             } else {
-                val elapsedDays = (now - existing.lastUpdatedAt) / MS_PER_DAY
-                (existing.fatiguePct - RECOVERY_PCT_PER_DAY * elapsedDays).coerceAtLeast(0.0)
+                val elapsedDays = (now - existing.lastUpdatedAt) / WorkoutProgressionHelper.MS_PER_DAY
+                (existing.fatiguePct - WorkoutProgressionHelper.RECOVERY_PCT_PER_DAY * elapsedDays).coerceAtLeast(0.0)
             }
             val newFatigue = (decayed + fatigueBump).coerceAtMost(100.0)
             repository.upsertRecovery(MuscleGroupRecoveryEntity(muscle, newFatigue, now))
@@ -2079,120 +1977,20 @@ class WorkoutViewModel(
     // --- User Profile & Strength Logic ---
 
     companion object {
-        // Drives the "Level" label shown on the profile screen off the user's current
-        // strength/stamina scores, independent of the gym-experience choice picked once at
-        // onboarding (that label never moved as the user actually progressed). Ranked-tier
-        // naming, decoupled from onboarding's Beginner/Intermediate/Expert terms. Bands widen
-        // at higher tiers since climbing from Master to Legend should take meaningfully longer
-        // than Bronze to Silver.
-        // Computes a muscle group's current recovery % (0 = fully fatigued, 100 = fully
-        // recovered) on read, decaying the stored fatiguePct by RECOVERY_PCT_PER_DAY for
-        // elapsed time since lastUpdatedAt. No entity (never trained) means fully recovered.
-        fun currentRecoveryPct(entity: MuscleGroupRecoveryEntity?, now: Long = System.currentTimeMillis()): Double {
-            if (entity == null) return 100.0
-            val elapsedDays = (now - entity.lastUpdatedAt) / MS_PER_DAY
-            val decayedFatigue = (entity.fatiguePct - RECOVERY_PCT_PER_DAY * elapsedDays).coerceIn(0.0, 100.0)
-            return 100.0 - decayedFatigue
-        }
+        fun currentRecoveryPct(entity: MuscleGroupRecoveryEntity?, now: Long = System.currentTimeMillis()): Double =
+            WorkoutProgressionHelper.currentRecoveryPct(entity, now)
 
-        fun deriveRankTier(strengthScore: Double, staminaScore: Double): String {
-            val avg = (strengthScore + staminaScore) / 2.0
-            return when {
-                avg < 60.0 -> "Bronze"
-                avg < 80.0 -> "Silver"
-                avg < 100.0 -> "Gold"
-                avg < 125.0 -> "Platinum"
-                avg < 160.0 -> "Diamond"
-                avg < 200.0 -> "Master"
-                avg < 260.0 -> "Grandmaster"
-                else -> "Legend"
-            }
-        }
+        fun deriveRankTier(strengthScore: Double, staminaScore: Double): String =
+            WorkoutProgressionHelper.deriveRankTier(strengthScore, staminaScore)
 
-        // Badge icon shown next to the nickname for the current rank tier.
-        fun rankBadgeRes(tier: String): Int = when (tier) {
-            "Bronze" -> R.drawable.badge_bronze
-            "Silver" -> R.drawable.badge_silver
-            "Gold" -> R.drawable.badge_gold
-            "Platinum" -> R.drawable.badge_platinum
-            "Diamond" -> R.drawable.badge_diamond
-            "Master" -> R.drawable.badge_master
-            "Grandmaster" -> R.drawable.badge_grandmaster
-            else -> R.drawable.badge_legend
-        }
+        fun rankBadgeRes(tier: String): Int =
+            WorkoutProgressionHelper.rankBadgeRes(tier)
 
-        // Strength declines more gradually with age than stamina does.
-        private fun ageMultStrengthFor(age: Int): Double = when {
-            age < 18 -> 0.8
-            age in 18..35 -> 1.0
-            else -> (1.0 - (age - 35) * 0.01).coerceAtLeast(0.6)
-        }
+        fun calculateInitialStrengthScore(age: Int, height: Double, weight: Double, gender: String, gymExperience: String): Double =
+            WorkoutProgressionHelper.calculateInitialStrengthScore(age, height, weight, gender, gymExperience)
 
-        // Stamina (cardiovascular capacity) declines faster with age than raw strength.
-        private fun ageMultStaminaFor(age: Int): Double = when {
-            age < 18 -> 0.85
-            age in 18..35 -> 1.0
-            else -> (1.0 - (age - 35) * 0.015).coerceAtLeast(0.5)
-        }
-
-        private fun heightMultFor(height: Double): Double = when {
-            height > 180.0 -> 1.05
-            height < 160.0 -> 0.95
-            else -> 1.0
-        }
-
-        // Secondary modifier for strength: heavier bodies tend to carry more raw
-        // strength capacity, lighter bodies slightly less.
-        private fun weightMultStrengthFor(weight: Double): Double = when {
-            weight > 90.0 -> 1.05
-            weight < 60.0 -> 0.95
-            else -> 1.0
-        }
-
-        private fun gymMultFor(gymExperience: String): Double = when (gymExperience) {
-            "Beginner" -> 0.7
-            "Intermediate" -> 1.0
-            "Expert" -> 1.3
-            else -> 0.7
-        }
-
-        /**
-         * Single source of truth for the onboarding strength estimate. Used both when
-         * actually saving the profile and for the onboarding screen's live preview, so
-         * the two can never drift apart.
-         *
-         * Strength is anchored on height rather than weight (taller frames imply more
-         * leverage/limb length, which the app treats as the primary strength driver),
-         * with weight as a secondary modifier and its own age curve.
-         */
-        fun calculateInitialStrengthScore(age: Int, height: Double, weight: Double, gender: String, gymExperience: String): Double {
-            val genderMult = when (gender) {
-                "Male" -> 1.2
-                "Female" -> 0.9
-                else -> 1.05
-            }
-            // Scale constant calibrated so a ~175cm frame lands in the same ballpark
-            // the old weight-based formula produced for an average bodyweight.
-            val base = height * 0.45 * genderMult
-            return (base * ageMultStrengthFor(age) * weightMultStrengthFor(weight) * gymMultFor(gymExperience)).coerceIn(30.0, 999.0)
-        }
-
-        /**
-         * Single source of truth for the onboarding stamina estimate. Mirrors strength's
-         * height/gym multipliers, but weight and gender are inverted: lighter bodies
-         * and (on average) female physiology carry endurance advantages, whereas strength
-         * rewards taller frames and male physiology. Stamina also uses its own (steeper)
-         * age decline curve, since cardiovascular capacity fades faster than raw strength.
-         */
-        fun calculateInitialStaminaScore(age: Int, height: Double, weight: Double, gender: String, gymExperience: String): Double {
-            val weightFactorStamina = (70.0 / weight).coerceIn(0.7, 1.3)
-            val genderStam = when (gender) {
-                "Male" -> 0.95
-                "Female" -> 1.05
-                else -> 1.0
-            }
-            return (100.0 * weightFactorStamina * genderStam * ageMultStaminaFor(age) * heightMultFor(height) * gymMultFor(gymExperience)).coerceIn(30.0, 999.0)
-        }
+        fun calculateInitialStaminaScore(age: Int, height: Double, weight: Double, gender: String, gymExperience: String): Double =
+            WorkoutProgressionHelper.calculateInitialStaminaScore(age, height, weight, gender, gymExperience)
     }
 
     fun saveUserProfile(
@@ -2446,54 +2244,9 @@ class WorkoutViewModel(
         exerciseType: String,
         userBodyWeight: Double,
         inclinePct: Double? = null
-    ): Double {
-        val basePerf = when (exerciseType) {
-            "LIFT" -> {
-                val r = reps ?: 0
-                val w = weight ?: 0.0
-                val isBodyweight = w == 0.0
-                val effectiveWeight = if (isBodyweight) userBodyWeight * 0.6 else w
-                // Weighted lifts score 50% higher than before; bodyweight moves (w == 0) are
-                // left untouched since those were already scoring fine.
-                val weightedBoost = if (isBodyweight) 1.0 else 1.5
-                effectiveWeight * (1.0 + r / 30.0) * weightedBoost
-            }
-            "CARDIO" -> {
-                val tSec = time ?: 1
-                if (isTimeOnlyCardio(exerciseName)) {
-                    // No distance is ever recorded for time-only cardio (Jump Rope, Jumping
-                    // Jacks, Burpees, ...), so the distance/speed formula below would always
-                    // score it 0 - score off duration instead.
-                    tSec * 0.2
-                } else if (exerciseName.contains("Battle Ropes", ignoreCase = true)) {
-                    // Battle Ropes' "distance" is an artificial metric only used to derive a
-                    // default duration (see getStandardStartDistance) - it's not a real
-                    // distance, so the distance/speed formula below undersells how demanding
-                    // this actually is. Score off duration instead, same as Jump Rope.
-                    tSec * 0.03
-                } else {
-                    // Distance/speed driven, same formula now used for Stair Climber too
-                    // (its old flat distance*0.1 was disconnected from pace and scored near 0).
-                    // Coefficients tuned so cardio lands in the same rough range as LIFT/HOLD
-                    // (~15-110) rather than dwarfing them. Cycling/Rowing get an extra
-                    // dampening factor since their higher cruising speed otherwise pushes them
-                    // well above other cardio at the same perceived effort.
-                    val dist = distance ?: 0.0
-                    val speedKmh = if (tSec > 0) (dist / (tSec / 3600.0)).coerceAtMost(30.0) else 0.0
-                    val inclineMult = 1.0 + ((inclinePct ?: 0.0) * 0.05)
-                    val activityFactor = if (exerciseName.contains("Cycling", ignoreCase = true) ||
-                        exerciseName.contains("Rowing", ignoreCase = true)) 0.5 else 1.0
-                    (dist * 6.0 + speedKmh * 1.5) * inclineMult * activityFactor
-                }
-            }
-            "HOLD" -> {
-                val tSec = time ?: 0
-                tSec * 0.6
-            }
-            else -> 0.0
-        }
-        return basePerf * PERFORMANCE_MULTIPLIER
-    }
+    ): Double = WorkoutPerformanceCalculator.calculateSetPerformance(
+        exerciseName, weight, reps, time, distance, exerciseType, userBodyWeight, inclinePct
+    )
 
     fun triggerFloatingNumber(text: String, colorType: String = "purple") {
         val list = floatingNumbers.value.toMutableList()
@@ -2514,35 +2267,8 @@ class WorkoutViewModel(
         floatingNumbers.value = list
     }
 
-    fun calculateSetCalories(set: WorkoutSetEntity, exercise: ExerciseEntity): Double {
-        return when (exercise.type) {
-            "LIFT" -> {
-                val w = set.weight ?: 0.0
-                val r = set.reps ?: 0
-                if (w == 0.0) {
-                    (r * 0.2) + 3.0
-                } else {
-                    (w * r * 0.05) + 3.0
-                }
-            }
-            "CARDIO" -> {
-                val durationMin = (set.time ?: 0) / 60.0
-                val distance = set.distance ?: 0.0
-                when {
-                    exercise.name.contains("Running", ignoreCase = true) -> 75.0 * distance * (1.0 + (set.inclinePct ?: 0.0) * 0.10)
-                    exercise.name.contains("Walking", ignoreCase = true)  -> 40.0 * distance * (1.0 + (set.inclinePct ?: 0.0) * 0.12)
-                    exercise.name.contains("Cycling", ignoreCase = true)  -> 30.0 * distance * (1.0 + (set.inclinePct ?: 0.0) * 0.08)
-                    exercise.name.contains("Elliptical", ignoreCase = true) -> 7.0 * durationMin
-                    else -> exercise.calorieBurnRate * durationMin
-                }
-            }
-            "HOLD" -> {
-                val durationSec = set.time ?: 0
-                durationSec * 0.15
-            }
-            else -> 0.0
-        }
-    }
+    fun calculateSetCalories(set: WorkoutSetEntity, exercise: ExerciseEntity): Double =
+        WorkoutPerformanceCalculator.calculateSetCalories(set, exercise)
 
     fun onExerciseScreenClosed(exerciseId: Int) {
         isExerciseScreenOpen.value = false

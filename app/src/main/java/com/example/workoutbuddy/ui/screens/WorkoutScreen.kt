@@ -154,6 +154,7 @@ fun WorkoutScreen(
                                     "PULL" -> GreenSuccess
                                     "LOWER_BODY" -> GoldPR
                                     "CARDIO" -> PerformanceRed
+                                    "FULL_BODY" -> PurpleAccent
                                     else -> BlueSecondary
                                 }
                                 Text(
@@ -200,6 +201,13 @@ fun WorkoutScreen(
                                     text = { Text("CARDIO Workout", color = PerformanceRed, fontWeight = FontWeight.Bold) },
                                     onClick = {
                                         viewModel.loadOrGenerateActiveWorkout("CARDIO")
+                                        showCategoryMenu = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("FULL BODY Workout", color = PurpleAccent, fontWeight = FontWeight.Bold) },
+                                    onClick = {
+                                        viewModel.loadOrGenerateActiveWorkout("FULL_BODY")
                                         showCategoryMenu = false
                                     }
                                 )

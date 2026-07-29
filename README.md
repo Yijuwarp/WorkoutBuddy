@@ -73,7 +73,7 @@ app/src/main/java/com/example/workoutbuddy/
 ├── data/
 │   ├── WorkoutRepository.kt      # Main repo: abstracts all DB operations (Dispatchers.IO)
 │   └── database/
-│       ├── WorkoutDatabase.kt    # Room DB singleton (v10, destructive fallback migration)
+│       ├── WorkoutDatabase.kt    # Room DB singleton (v20, destructive fallback migration)
 │       ├── WorkoutDao.kt         # 40+ SQL queries via Room annotations
 │       ├── ExerciseEntity.kt     # Exercise table (name, type, body part, etc.)
 │       ├── WorkoutEntity.kt      # Workout session table
@@ -216,6 +216,7 @@ cd WorkoutBuddy
 | **Kotlin Coroutines** | Async operations & timers |
 | **Navigation3** | Compose navigation |
 | **KSP** | Kotlin Symbol Processing for Room code-gen |
+| **Version** | v1.6 (versionCode 7, DB schema v20) |
 
 ---
 

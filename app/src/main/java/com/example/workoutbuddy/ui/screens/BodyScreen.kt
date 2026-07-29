@@ -19,6 +19,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import com.example.workoutbuddy.theme.*
 import com.example.workoutbuddy.viewmodel.ExerciseTrend
 import com.example.workoutbuddy.viewmodel.WorkoutViewModel
@@ -58,7 +63,12 @@ fun BodyScreen(
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
                         .background(if (selected) BluePrimary else Color.Transparent)
-                        .clickable { tab = t }
+                        .clickable(onClickLabel = "Select " + label + " tab") { tab = t }
+                .semantics {
+                    role = Role.Tab
+                    this.selected = selected
+                    contentDescription = label + " tab"
+                }
                         .padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -136,7 +146,7 @@ private fun ResultsTab(viewModel: WorkoutViewModel) {
                             ExerciseTrend.DOWN -> Icons.Default.TrendingDown to RedDanger
                             ExerciseTrend.FLAT -> Icons.Default.TrendingFlat to TextMuted
                         }
-                        Icon(icon, contentDescription = summary.trend.name, tint = tint)
+                        Icon(icon, contentDescription = "Trend " + summary.trend.name.lowercase(), tint = tint)
                     }
                 }
             }

@@ -1,6 +1,7 @@
 package com.example.workoutbuddy
 
 import android.app.NotificationChannel
+import android.util.Log
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -80,7 +81,7 @@ class TimerExpiredReceiver : BroadcastReceiver() {
                 vibrator.vibrate(800)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("WorkoutBuddy", "Timer vibration error", e)
         }
     }
 }

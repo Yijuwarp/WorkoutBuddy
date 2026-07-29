@@ -71,7 +71,7 @@ The repository is the single source of truth. The ViewModel never touches the DA
 
 ### 4. Database Layer (`data/database/`)
 
-**Room** database (schema version 10, destructive-fallback migration) with a single `WorkoutDao` exposing 40+ queries.
+**Room** database (schema version 20, destructive-fallback migration) with a single `WorkoutDao` exposing 40+ queries.
 
 #### Entity Relationships
 
@@ -198,8 +198,8 @@ Calories are estimated at workout completion using simplified metabolic equivale
 | `minSdk` | 24 (Android 7.0) |
 | `targetSdk` | 36 |
 | `jvmToolchain` | 17 |
-| `versionCode` | 1 |
-| `versionName` | 1.0 |
+| `versionCode` | 7 |
+| `versionName` | 1.6 |
 
 Key Gradle plugins:
 - `kotlin.serialization` – for navigation type-safe routes

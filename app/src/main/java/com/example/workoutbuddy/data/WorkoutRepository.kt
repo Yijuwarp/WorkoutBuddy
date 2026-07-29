@@ -25,12 +25,14 @@ class WorkoutRepository(private val workoutDao: WorkoutDao) {
                     existing.howToSteps != seed.howToSteps ||
                     existing.youtubeUrl != seed.youtubeUrl ||
                     existing.bodyPart != seed.bodyPart ||
+                    existing.category != seed.category ||
                     existing.difficulty != seed.difficulty ->
                     existing.copy(
                         description = seed.description,
                         howToSteps = seed.howToSteps,
                         youtubeUrl = seed.youtubeUrl,
                         bodyPart = seed.bodyPart,
+                        category = seed.category,
                         difficulty = seed.difficulty
                     )
                 else -> null

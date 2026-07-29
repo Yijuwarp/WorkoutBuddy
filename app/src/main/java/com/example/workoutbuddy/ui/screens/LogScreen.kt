@@ -150,6 +150,7 @@ fun CompletedWorkoutItem(
         "PULL" -> GreenSuccess
         "LOWER_BODY" -> GoldPR
         "CARDIO" -> PerformanceRed
+        "FULL_BODY" -> PurpleAccent
         else -> BlueSecondary
     }
 

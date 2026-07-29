@@ -35,3 +35,5 @@ val YoutubeRed = Color(0xFFFF0000)
 // Performance (intensity) and Burn (calorie) dials, plus the floating numbers that mirror them
 val PerformanceRed = Color(0xFFFF4D5E)
 val BurnAmber = Color(0xFFFFB020)
+val PurpleAccent = Color(0xFFA855F7)
+

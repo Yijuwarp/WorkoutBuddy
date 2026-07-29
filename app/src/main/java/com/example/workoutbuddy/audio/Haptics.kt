@@ -1,6 +1,7 @@
 package com.example.workoutbuddy.audio
 
 import android.content.Context
+import android.util.Log
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -30,7 +31,7 @@ object Haptics {
                 v.vibrate(durationMs)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("WorkoutBuddy", "Haptic operation error", e)
         }
     }
 
@@ -52,7 +53,7 @@ object Haptics {
                 v.vibrate(longArrayOf(0, 60, 80, 120), -1)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("WorkoutBuddy", "Haptic operation error", e)
         }
     }
 }

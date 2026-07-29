@@ -19,6 +19,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import com.example.workoutbuddy.data.Equipment
 import com.example.workoutbuddy.data.database.EquipmentPresetEntity
 import com.example.workoutbuddy.theme.BluePrimary
@@ -106,7 +110,7 @@ fun EquipmentScreen(
                 AssistChip(
                     onClick = { showSavePresetDialog = true },
                     label = { Text("Save current") },
-                    leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    leadingIcon = { Icon(Icons.Default.Add, contentDescription = "Save current equipment preset", modifier = Modifier.size(16.dp)) },
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = BluePrimary.copy(alpha = 0.1f),
                         labelColor = BluePrimary,
@@ -170,12 +174,19 @@ private fun PresetChip(
     // Tap applies the preset; long-press is the only way to delete it, so an accidental tap
     // can't wipe out a saved setup the way a small always-visible "x" button could.
     Surface(
-        modifier = Modifier.combinedClickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = LocalIndication.current,
-            onClick = onApply,
-            onLongClick = onLongPress
-        ),
+        modifier = Modifier
+            .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = LocalIndication.current,
+                onClick = onApply,
+                onLongClick = onLongPress,
+                onClickLabel = "Apply " + preset.name + " preset",
+                onLongClickLabel = "Delete " + preset.name + " preset"
+            )
+            .semantics {
+                role = Role.Button
+                contentDescription = "Equipment preset: " + preset.name + ". Tap to apply, long press to delete."
+            },
         shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surface,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)

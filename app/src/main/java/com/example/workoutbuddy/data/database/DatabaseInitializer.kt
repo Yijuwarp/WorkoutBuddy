@@ -830,13 +830,13 @@ object DatabaseInitializer {
                 youtubeUrl = "https://www.youtube.com/watch?v=rqiTPdK1c_I"
             ),
 
-            // ==================== CARDIO (equipment-free, time-based) ====================
-            // These seed the dedicated CARDIO day. Names must stay in sync with
-            // TIME_ONLY_CARDIO in WorkoutViewModel (time-tracked, no distance metric).
+            // ==================== FULL_BODY (equipment-free, time-based) ====================
+            // Names must stay in sync with TIME_ONLY_CARDIO in WorkoutPerformanceCalculator
+            // (time-tracked, no distance metric).
 
             ExerciseEntity(
                 name = "Jumping Jacks",
-                category = "CARDIO",
+                category = "FULL_BODY",
                 type = "CARDIO",
                 bodyPart = "Full Body",
                 calorieBurnRate = 8.0,
@@ -847,7 +847,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "High Knees",
-                category = "CARDIO",
+                category = "FULL_BODY",
                 type = "CARDIO",
                 bodyPart = "Full Body",
                 calorieBurnRate = 9.0,
@@ -858,7 +858,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Burpees",
-                category = "CARDIO",
+                category = "FULL_BODY",
                 type = "CARDIO",
                 bodyPart = "Full Body",
                 calorieBurnRate = 10.0,
@@ -869,7 +869,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Mountain Climbers",
-                category = "CARDIO",
+                category = "FULL_BODY",
                 type = "CARDIO",
                 bodyPart = "Core & Full Body",
                 calorieBurnRate = 9.0,
@@ -880,7 +880,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Butt Kicks",
-                category = "CARDIO",
+                category = "FULL_BODY",
                 type = "CARDIO",
                 bodyPart = "Hamstrings & Calves",
                 calorieBurnRate = 8.0,
@@ -891,7 +891,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Skater Jumps",
-                category = "CARDIO",
+                category = "FULL_BODY",
                 type = "CARDIO",
                 bodyPart = "Quads & Glutes",
                 calorieBurnRate = 8.5,
@@ -905,7 +905,7 @@ object DatabaseInitializer {
 
             ExerciseEntity(
                 name = "Running",
-                category = "LOWER_BODY",
+                category = "CARDIO",
                 type = "CARDIO",
                 bodyPart = "Cardio",
                 calorieBurnRate = 10.0,
@@ -916,7 +916,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Walking",
-                category = "LOWER_BODY",
+                category = "CARDIO",
                 type = "CARDIO",
                 bodyPart = "Cardio",
                 calorieBurnRate = 4.0,
@@ -927,7 +927,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Cycling",
-                category = "LOWER_BODY",
+                category = "CARDIO",
                 type = "CARDIO",
                 bodyPart = "Cardio",
                 calorieBurnRate = 6.0,
@@ -938,7 +938,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Elliptical Trainer (EFX)",
-                category = "LOWER_BODY",
+                category = "CARDIO",
                 type = "CARDIO",
                 bodyPart = "Cardio",
                 calorieBurnRate = 7.0,
@@ -949,7 +949,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Rowing Machine",
-                category = "LOWER_BODY",
+                category = "CARDIO",
                 type = "CARDIO",
                 bodyPart = "Full Body",
                 calorieBurnRate = 8.0,
@@ -960,7 +960,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Jump Rope",
-                category = "LOWER_BODY",
+                category = "CARDIO",
                 type = "CARDIO",
                 bodyPart = "Cardio",
                 calorieBurnRate = 11.0,
@@ -971,7 +971,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Stair Climber",
-                category = "LOWER_BODY",
+                category = "CARDIO",
                 type = "CARDIO",
                 bodyPart = "Cardio",
                 calorieBurnRate = 9.0,
@@ -982,7 +982,7 @@ object DatabaseInitializer {
             ),
             ExerciseEntity(
                 name = "Battle Ropes",
-                category = "LOWER_BODY",
+                category = "CARDIO",
                 type = "CARDIO",
                 bodyPart = "Full Body",
                 calorieBurnRate = 10.5,

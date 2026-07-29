@@ -18,7 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MuscleGroupRecoveryEntity::class
     ],
     version = 20,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class WorkoutDatabase : RoomDatabase() {
     abstract fun workoutDao(): WorkoutDao
@@ -34,7 +34,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
         // neutral guess users can adjust from Profile settings. Written as a real migration
         // instead of relying on fallbackToDestructiveMigration() because that wipes/re-seeds,
         // which would lose existing profiles/workout history.
-        private val MIGRATION_15_16 = object : Migration(15, 16) {
+        val MIGRATION_15_16 = object : Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE exercises ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'MEDIUM'")
                 db.execSQL(
@@ -53,7 +53,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
 
         // Adds equipment_presets, letting users save/re-apply named equipment setups (e.g.
         // "Home", "Gym") instead of re-toggling each piece by hand.
-        private val MIGRATION_16_17 = object : Migration(16, 17) {
+        val MIGRATION_16_17 = object : Migration(16, 17) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "CREATE TABLE IF NOT EXISTS equipment_presets (" +
@@ -67,7 +67,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
         // Adds hasSeenWorkoutTour, gating the one-time first-open WorkoutScreen coach-mark tour.
         // Existing profiles default to false (column default), which is fine since they've
         // already passed onboarding and don't need the tour retroactively.
-        private val MIGRATION_17_18 = object : Migration(17, 18) {
+        val MIGRATION_17_18 = object : Migration(17, 18) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE user_profile ADD COLUMN hasSeenWorkoutTour INTEGER NOT NULL DEFAULT 0")
             }
@@ -75,7 +75,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
 
         // Adds muscle_group_recovery for the Body tab's per-muscle-group fatigue bars.
         // No seed/backfill needed - absence of a row means fully recovered.
-        private val MIGRATION_18_19 = object : Migration(18, 19) {
+        val MIGRATION_18_19 = object : Migration(18, 19) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "CREATE TABLE IF NOT EXISTS muscle_group_recovery (" +
@@ -88,7 +88,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
 
         // Adds workoutLengthMinutes, the target length of auto-generated workouts. Existing
         // profiles default to 45, which matches the pre-existing generation behavior exactly.
-        private val MIGRATION_19_20 = object : Migration(19, 20) {
+        val MIGRATION_19_20 = object : Migration(19, 20) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE user_profile ADD COLUMN workoutLengthMinutes INTEGER NOT NULL DEFAULT 45")
             }
@@ -102,7 +102,6 @@ abstract class WorkoutDatabase : RoomDatabase() {
                     "workout_database"
                 )
                 .addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
-                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance
@@ -110,3 +109,4 @@ abstract class WorkoutDatabase : RoomDatabase() {
         }
     }
 }
+
