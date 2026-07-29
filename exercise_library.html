@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkoutBuddy Exercise & Image Library</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0B0E14;
+            --surface-dark: #161B26;
+            --surface-card: #161B26;
+            --surface-hover: #1E2533;
+            --border-light: #2A3142;
+            --text-main: #F1F5F9;
+            --text-muted: #8A94A6;
+            
+            --cat-push: #3B82F6;
+            --cat-pull: #22C55E;
+            --cat-lower: #FBBF24;
+            --cat-full: #A855F7;
+            --cat-cardio: #FF4D5E;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        /* Header & Hero */
+        header {
+            background: linear-gradient(180deg, rgba(22, 27, 38, 0.95) 0%, rgba(11, 14, 20, 0.98) 100%);
+            border-bottom: 1px solid var(--border-light);
+            padding: 24px 32px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .brand-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .brand-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #FFFFFF 0%, #94A3B8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-title span {
+            font-size: 13px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            background: var(--surface-hover);
+            border: 1px solid var(--border-light);
+            color: var(--text-main);
+            padding: 4px 12px;
+            border-radius: 20px;
+            -webkit-text-fill-color: var(--text-main);
+        }
+
+        .stats-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .stat-pill {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-pill.push { color: var(--cat-push); border-color: rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.1); }
+        .stat-pill.pull { color: var(--cat-pull); border-color: rgba(34, 197, 94, 0.3); background: rgba(34, 197, 94, 0.1); }
+        .stat-pill.lower { color: var(--cat-lower); border-color: rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.1); }
+        .stat-pill.full { color: var(--cat-full); border-color: rgba(168, 85, 247, 0.3); background: rgba(168, 85, 247, 0.1); }
+        .stat-pill.cardio { color: var(--cat-cardio); border-color: rgba(255, 77, 94, 0.3); background: rgba(255, 77, 94, 0.1); }
+
+        /* Controls Row */
+        .controls-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 260px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 16px 10px 40px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .search-box input:focus {
+            border-color: var(--cat-push);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-light);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover {
+            background: var(--surface-hover);
+            color: var(--text-main);
+        }
+
+        .filter-btn.active {
+            background: var(--text-main);
+            color: var(--bg-dark);
+            border-color: var(--text-main);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+        }
+
+        .filter-btn[data-cat="PUSH"].active { background: var(--cat-push); color: #fff; border-color: var(--cat-push); }
+        .filter-btn[data-cat="PULL"].active { background: var(--cat-pull); color: #fff; border-color: var(--cat-pull); }
+        .filter-btn[data-cat="LOWER_BODY"].active { background: var(--cat-lower); color: #000; border-color: var(--cat-lower); }
+        .filter-btn[data-cat="FULL_BODY"].active { background: var(--cat-full); color: #fff; border-color: var(--cat-full); }
+        .filter-btn[data-cat="CARDIO"].active { background: var(--cat-cardio); color: #fff; border-color: var(--cat-cardio); }
+
+        /* Main Container */
+        main {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 32px;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        /* Card Design - Properly Sized Square 1:1 Images */
+        .card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        /* 1:1 Square Image Container */
+        .card-image-wrapper {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #090C11;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .card-image-wrapper img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover .card-image-wrapper img {
+            transform: scale(1.05);
+        }
+
+        .image-filename-tag {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            right: 8px;
+            background: rgba(11, 14, 20, 0.9);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #94A3B8;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+
+        .card-content {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .exercise-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.3;
+            color: var(--text-main);
+        }
+
+        .badge {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .badge-PUSH { background: rgba(59, 130, 246, 0.2); color: var(--cat-push); border: 1px solid rgba(59, 130, 246, 0.4); }
+        .badge-PULL { background: rgba(34, 197, 94, 0.2); color: var(--cat-pull); border: 1px solid rgba(34, 197, 94, 0.4); }
+        .badge-LOWER_BODY { background: rgba(251, 191, 36, 0.2); color: var(--cat-lower); border: 1px solid rgba(251, 191, 36, 0.4); }
+        .badge-FULL_BODY { background: rgba(168, 85, 247, 0.2); color: var(--cat-full); border: 1px solid rgba(168, 85, 247, 0.4); }
+        .badge-CARDIO { background: rgba(255, 77, 94, 0.2); color: var(--cat-cardio); border: 1px solid rgba(255, 77, 94, 0.4); }
+
+        .sub-badges {
+            display: flex;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+            flex-wrap: wrap;
+        }
+
+        .sub-badge {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .description {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .yt-link {
+            margin-top: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #FF4D5E;
+            text-decoration: none;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            transition: opacity 0.2s ease;
+        }
+
+        .yt-link:hover {
+            opacity: 0.8;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-muted);
+            grid-column: 1 / -1;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-container">
+            <div class="brand-row">
+                <div class="brand-title">
+                    WorkoutBuddy Exercise Library
+                    <span id="total-count-badge">82 Exercises</span>
+                </div>
+
+                <div class="stats-pills">
+                    <div class="stat-pill push">PUSH: <span id="cnt-push">0</span></div>
+                    <div class="stat-pill pull">PULL: <span id="cnt-pull">0</span></div>
+                    <div class="stat-pill lower">LOWER BODY: <span id="cnt-lower">0</span></div>
+                    <div class="stat-pill full">FULL BODY: <span id="cnt-full">0</span></div>
+                    <div class="stat-pill cardio">CARDIO: <span id="cnt-cardio">0</span></div>
+                </div>
+            </div>
+
+            <div class="controls-row">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-input" placeholder="Search by exercise name, body part, or image filename...">
+                </div>
+
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-cat="ALL">ALL</button>
+                    <button class="filter-btn" data-cat="PUSH">PUSH</button>
+                    <button class="filter-btn" data-cat="PULL">PULL</button>
+                    <button class="filter-btn" data-cat="LOWER_BODY">LOWER BODY</button>
+                    <button class="filter-btn" data-cat="FULL_BODY">FULL BODY</button>
+                    <button class="filter-btn" data-cat="CARDIO">CARDIO</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="gallery-grid" id="exercise-grid"></div>
+    </main>
+
+    <script>
+        const exercises = [
+  {
+    "name": "Barbell Bench Press",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Chest",
+    "calorie_rate": 0.35,
+    "description": "The king of chest exercises. Lie flat on a bench and press a barbell from chest to full extension. Targets pectorals, front deltoids, and triceps.",
+    "how_to": "Set up a barbell on the rack at arm's length height.\nLie flat on the bench, eyes under the bar.\nGrip the bar slightly wider than shoulder-width.\nUnrack the bar, lower it slowly to mid-chest.\nPress up explosively until arms are fully extended.\nRe-rack the bar after completing reps.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=vcBig73ojpE",
+    "res_name": "ic_ex_barbell_bench_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_barbell_bench_press.jpg"
+  },
+  {
+    "name": "Incline Barbell Bench Press",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Upper Chest",
+    "calorie_rate": 0.34,
+    "description": "Pressing a barbell on an inclined bench to emphasize the upper pectorals and front deltoids.",
+    "how_to": "Set bench to 30-45 degree incline.\nGrip barbell slightly wider than shoulder-width.\nUnrack and lower bar to upper chest.\nPress up in a slight arc back toward the rack.\nControl the descent, repeat.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=DbFgADa2PL8",
+    "res_name": "ic_ex_incline_barbell_bench_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_incline_barbell_bench_press.jpg"
+  },
+  {
+    "name": "Dumbbell Bench Press",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Chest",
+    "calorie_rate": 0.32,
+    "description": "Lie flat on a bench, pressing dumbbells upward for balanced chest growth with greater range of motion.",
+    "how_to": "Lie on bench with a dumbbell in each hand at chest level.\nPress both dumbbells directly upward until arms are extended.\nSlowly lower them back to chest level.\nKeep wrists straight throughout.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=QsYre__-aro",
+    "res_name": "ic_ex_dumbbell_bench_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_bench_press.jpg"
+  },
+  {
+    "name": "Incline Dumbbell Press",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Upper Chest",
+    "calorie_rate": 0.3,
+    "description": "Pressing dumbbells on an inclined bench to build the upper chest with balanced strength.",
+    "how_to": "Set bench to 30-45 degrees.\nSit with dumbbells on thighs, then lean back as you raise them to chest.\nPress up and slightly inward.\nLower with control back to starting position.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=8iPEnn-ltC8",
+    "res_name": "ic_ex_incline_dumbbell_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_incline_dumbbell_press.jpg"
+  },
+  {
+    "name": "Decline Barbell Bench Press",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Lower Chest",
+    "calorie_rate": 0.34,
+    "description": "Barbell press on a decline bench to emphasize the lower portion of the pectorals while still engaging triceps and front delts.",
+    "how_to": "Lie back on a decline bench and hook your feet under the pads.\nGrip the barbell slightly wider than shoulder-width and unrack it.\nLower the bar under control to your lower chest.\nPress back up explosively until arms are fully extended.\nRe-rack the bar after your final rep.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=LfyQBUKR8SE",
+    "res_name": "ic_ex_decline_barbell_bench_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_decline_barbell_bench_press.jpg"
+  },
+  {
+    "name": "Decline Dumbbell Press",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Lower Chest",
+    "calorie_rate": 0.32,
+    "description": "Decline-bench press with dumbbells for greater range of motion and unilateral control while targeting the lower chest.",
+    "how_to": "Lie back on a decline bench with a dumbbell in each hand, securing your feet under the pads.\nPress both dumbbells up above your lower chest until arms are extended.\nLower them under control to the sides of your chest.\nKeep your shoulders back and core braced throughout.\nPress back up, avoiding flaring your elbows out.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=k9CzXmJcJNw",
+    "res_name": "ic_ex_decline_dumbbell_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_decline_dumbbell_press.jpg"
+  },
+  {
+    "name": "Dumbbell Fly",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Chest",
+    "calorie_rate": 0.2,
+    "description": "Lying dumbbell fly that isolates the chest through a wide arc and deep stretch, building pec width.",
+    "how_to": "Lie flat on a bench holding a dumbbell in each hand above your chest.\nKeep a soft, fixed bend in your elbows throughout.\nLower the dumbbells out to the sides in a wide arc until you feel a chest stretch.\nSqueeze your chest to bring them back together over your chest.\nDon't let the dumbbells touch at the top to keep tension.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=L8MRBMGl7gc",
+    "res_name": "ic_ex_dumbbell_fly.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_fly.jpg"
+  },
+  {
+    "name": "Close-Grip Bench Press",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Triceps",
+    "calorie_rate": 0.3,
+    "description": "A bench press with a narrower grip and tucked elbows that shifts the emphasis onto the triceps for pressing strength.",
+    "how_to": "Lie on a flat bench and grip the bar slightly narrower than shoulder-width.\nUnrack and hold the bar over your chest.\nLower the bar to your lower chest, keeping elbows tucked close to your body.\nPress back up by extending the elbows, squeezing the triceps.\nKeep wrists stacked over elbows throughout.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=UYJsFzqdgK4",
+    "res_name": "ic_ex_close_grip_bench_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_close_grip_bench_press.jpg"
+  },
+  {
+    "name": "Dumbbell Pullover",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Chest & Lats",
+    "calorie_rate": 0.22,
+    "description": "A single-dumbbell pullover that stretches and builds the chest and lats through a long overhead arc.",
+    "how_to": "Lie on a bench holding one dumbbell with both hands above your chest.\nKeep a slight bend in the elbows.\nLower the dumbbell back behind your head until you feel a deep stretch.\nPull it back over your chest using your chest and lats.\nKeep your hips down and core braced throughout.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=Qc4L9I3pHnw",
+    "res_name": "ic_ex_dumbbell_pullover.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_pullover.jpg"
+  },
+  {
+    "name": "Cable Lateral Raise",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Shoulders",
+    "calorie_rate": 0.15,
+    "description": "Cable lateral raise that keeps constant tension on the side delts for wider, rounder shoulders.",
+    "how_to": "Set a cable pulley to the lowest position and stand side-on.\nGrip the handle with the hand furthest from the machine.\nWith a slight elbow bend, raise your arm out to the side to shoulder height.\nPause briefly at the top, leading with the elbow.\nLower under control. Avoid swinging or using momentum.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=zpbm-xRHB6k",
+    "res_name": "ic_ex_cable_lateral_raise.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_cable_lateral_raise.jpg"
+  },
+  {
+    "name": "Pike Push-ups",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Shoulders",
+    "calorie_rate": 0.2,
+    "description": "A bodyweight pressing movement in a pike position that heavily targets the shoulders, a stepping stone toward handstand push-ups.",
+    "how_to": "Start in a push-up position, then walk your feet in and raise your hips into an inverted V.\nKeep your arms straight and head between your arms to start.\nBend your elbows to lower the top of your head toward the floor.\nPress back up until arms are fully extended.\nKeep your hips high throughout to keep the load on the shoulders.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=fXgou2W10ok",
+    "res_name": "ic_ex_pike_push_ups.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_pike_push_ups.jpg"
+  },
+  {
+    "name": "Cable Chest Fly",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Chest",
+    "calorie_rate": 0.2,
+    "description": "Standing cable fly to isolate the pectoral muscles with constant tension throughout the movement.",
+    "how_to": "Set both cable pulleys at high position.\nGrab handles with palms facing inward.\nStep forward into a split stance.\nWith a slight bend in the elbow, sweep arms forward and together.\nSlowly return to start.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=taI4XduLpTk",
+    "res_name": "ic_ex_cable_chest_fly.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_cable_chest_fly.jpg"
+  },
+  {
+    "name": "Pec Deck Machine",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Chest",
+    "calorie_rate": 0.18,
+    "description": "Machine fly that isolates the chest with a fixed arc of motion for beginners and pre-exhaust work.",
+    "how_to": "Sit with back against pad, forearms against arm pads.\nBring arms together in front of you.\nSqueeze chest at peak contraction.\nSlowly open arms back to start.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=Z57CtFmRMxA",
+    "res_name": "ic_ex_pec_deck_machine.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_pec_deck_machine.jpg"
+  },
+  {
+    "name": "Barbell Overhead Press",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Shoulders",
+    "calorie_rate": 0.3,
+    "description": "The fundamental standing overhead press with a barbell to build raw shoulder power and core stability.",
+    "how_to": "Stand with barbell at shoulder height, grip shoulder-width.\nBrace core and press bar directly overhead.\nLock out arms at top.\nLower bar in a controlled arc back to shoulders.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=xe19t2_6yis",
+    "res_name": "ic_ex_barbell_overhead_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_barbell_overhead_press.jpg"
+  },
+  {
+    "name": "Dumbbell Shoulder Press",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Shoulders",
+    "calorie_rate": 0.28,
+    "description": "Pressing dumbbells overhead from shoulder level. Allows a more natural pressing arc and greater range of motion.",
+    "how_to": "Sit or stand holding dumbbells at shoulder height, palms facing forward.\nPress both dumbbells up until arms are fully extended.\nLower back to shoulder level with control.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=qEwKCR5JCog",
+    "res_name": "ic_ex_dumbbell_shoulder_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_shoulder_press.jpg"
+  },
+  {
+    "name": "Dumbbell Lateral Raises",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Shoulders",
+    "calorie_rate": 0.15,
+    "description": "Isolates the lateral head of the deltoid to build broader, wider shoulders.",
+    "how_to": "Stand with dumbbells at sides, slight bend in elbows.\nRaise both arms out to sides until parallel to the floor.\nPause briefly at the top.\nLower with control. Avoid swinging.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=3VcKaXpzqRo",
+    "res_name": "ic_ex_dumbbell_lateral_raises.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_lateral_raises.jpg"
+  },
+  {
+    "name": "Dumbbell Front Raises",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "",
+    "calorie_rate": 0.0,
+    "description": "",
+    "how_to": "",
+    "impact": "MEDIUM",
+    "youtube": "",
+    "res_name": "ic_ex_dumbbell_front_raises.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_front_raises.jpg"
+  },
+  {
+    "name": "Arnold Press",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Shoulders",
+    "calorie_rate": 0.26,
+    "description": "A rotational dumbbell press that hits all three heads of the deltoid in one movement, popularized by Arnold Schwarzenegger.",
+    "how_to": "Sit holding dumbbells at chin height, palms facing you.\nAs you press up, rotate palms to face forward.\nFully extend arms at the top.\nReverse the rotation as you lower.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=vj2w851ZHRM",
+    "res_name": "ic_ex_arnold_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_arnold_press.jpg"
+  },
+  {
+    "name": "Overhead Tricep Extension",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Triceps",
+    "calorie_rate": 0.17,
+    "description": "Overhead extension using a dumbbell or cable to fully stretch and target the long head of the tricep.",
+    "how_to": "Hold one dumbbell with both hands overhead.\nKeep elbows close to head, pointing forward.\nLower the dumbbell behind your head.\nExtend arms back to full extension.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=_gsUck-7M74",
+    "res_name": "ic_ex_overhead_tricep_extension.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_overhead_tricep_extension.jpg"
+  },
+  {
+    "name": "Skull Crushers",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Triceps",
+    "calorie_rate": 0.18,
+    "description": "Lying barbell or EZ-bar extension that brutally isolates the triceps for mass building.",
+    "how_to": "Lie on a bench holding an EZ-bar above your chest, arms extended.\nKeeping upper arms fixed, hinge elbows to lower the bar toward your forehead.\nExtend arms back to full extension.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=d_KZxkY_0cM",
+    "res_name": "ic_ex_skull_crushers.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_skull_crushers.jpg"
+  },
+  {
+    "name": "Dumbbell Skull Crushers",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Triceps",
+    "calorie_rate": 0.17,
+    "description": "Lying dumbbell triceps extension that allows a neutral grip and independent arm control for balanced tricep development.",
+    "how_to": "Lie on a bench holding a dumbbell in each hand above your chest, palms facing each other.\nKeeping your upper arms still, bend your elbows to lower the dumbbells toward the sides of your head.\nPause briefly, then extend your elbows back to full extension.\nKeep shoulders, elbows, and wrists aligned throughout.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=dTjGqmR7ORg",
+    "res_name": "ic_ex_dumbbell_skull_crushers.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_skull_crushers.jpg"
+  },
+  {
+    "name": "Push-ups",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Chest",
+    "calorie_rate": 0.2,
+    "description": "The foundational bodyweight pushing movement targeting chest, shoulders, and triceps.",
+    "how_to": "Start in a plank position, hands shoulder-width apart.\nLower your chest to just above the floor by bending elbows.\nPush back up to starting position.\nKeep body in a straight line throughout.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=_l3ySVKYVJ8",
+    "res_name": "ic_ex_push_ups.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_push_ups.jpg"
+  },
+  {
+    "name": "Dips",
+    "category": "PUSH",
+    "type": "LIFT",
+    "body_part": "Triceps",
+    "calorie_rate": 0.22,
+    "description": "Parallel bar dips: a powerful compound bodyweight movement for triceps and chest.",
+    "how_to": "Grip parallel bars and support your body with arms extended.\nLower your body by bending elbows until upper arms are parallel to floor.\nPush back up to starting position.\nLean forward slightly to emphasize chest, stay upright for triceps.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=2z8JmcrW-As",
+    "res_name": "ic_ex_dips.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dips.jpg"
+  },
+  {
+    "name": "Plank",
+    "category": "PUSH",
+    "type": "HOLD",
+    "body_part": "Core",
+    "calorie_rate": 0.15,
+    "description": "The fundamental isometric core hold that builds deep abdominal stability and total-body tension.",
+    "how_to": "Place forearms on floor, elbows under shoulders.\nExtend legs behind you, toes on floor.\nKeep body in a perfectly straight line from head to heels.\nEngage core and glutes throughout. Hold.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=pSHjTRCQxIw",
+    "res_name": "ic_ex_plank.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_plank.jpg"
+  },
+  {
+    "name": "Barbell Deadlift",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Full Body",
+    "calorie_rate": 0.5,
+    "description": "The most fundamental compound lift. Pulling a loaded barbell from the floor engages the entire posterior chain.",
+    "how_to": "Stand with mid-foot under the bar, feet hip-width.\nHinge at hips, grip bar just outside your legs.\nFlatten your back, take a deep breath and brace.\nDrive through the floor with legs as the bar passes the knees, lock hips forward.\nLower bar by hinging at hips, then bend knees once it passes them.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=op9kVnSso6Q",
+    "res_name": "ic_ex_barbell_deadlift.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_barbell_deadlift.jpg"
+  },
+  {
+    "name": "Dumbbell Deadlift",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Full Body",
+    "calorie_rate": 0.42,
+    "description": "A conventional-stance deadlift using dumbbells, ideal for beginners learning the hip hinge with a lighter, more forgiving load.",
+    "how_to": "Stand with feet hip-width, a dumbbell in each hand in front of your thighs.\nHinge at the hips, pushing them back as you lower the dumbbells down the front of your legs.\nKeep your back flat and dumbbells close to your body.\nDrive through your heels and squeeze your glutes to stand back up.\nLock out at the top without leaning back.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=Ipi8_vz8_z0",
+    "res_name": "ic_ex_dumbbell_deadlift.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_deadlift.jpg"
+  },
+  {
+    "name": "Romanian Deadlift",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Hamstrings",
+    "calorie_rate": 0.4,
+    "description": "Hip-hinge dominant deadlift variation that maximally targets hamstrings and glutes through a long range of motion.",
+    "how_to": "Hold barbell at hip level, feet hip-width.\nKeeping knees slightly bent, hinge at hips pushing them back.\nSlide bar down your legs, keeping back flat.\nFeel a deep hamstring stretch at the bottom.\nDrive hips forward to return to standing.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=hCDzSR6bW10",
+    "res_name": "ic_ex_romanian_deadlift.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_romanian_deadlift.jpg"
+  },
+  {
+    "name": "Barbell Row",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Back",
+    "calorie_rate": 0.38,
+    "description": "Bent-over barbell row for building back thickness. The primary mass-building exercise for the lats and rhomboids.",
+    "how_to": "Stand with barbell, hinge forward until torso is nearly parallel to floor.\nKeep back flat and core braced.\nPull bar to your lower chest/upper abdomen.\nSqueeze shoulder blades together at the top.\nLower the bar with control.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=FWJR5Ve8bnQ",
+    "res_name": "ic_ex_barbell_row.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_barbell_row.jpg"
+  },
+  {
+    "name": "Dumbbell Row",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Back",
+    "calorie_rate": 0.35,
+    "description": "Single-arm dumbbell row on a bench. Great for correcting strength imbalances and targeting the lat.",
+    "how_to": "Place one hand and same-side knee on a flat bench.\nHold a dumbbell in the other hand, letting it hang.\nPull the dumbbell up toward your hip, elbow close to body.\nSqueeze at the top, lower with control.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=pYcpY20QaE8",
+    "res_name": "ic_ex_dumbbell_row.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_row.jpg"
+  },
+  {
+    "name": "Lat Pulldown",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Lats",
+    "calorie_rate": 0.3,
+    "description": "Cable machine exercise that simulates a pull-up, excellent for building wide lats and improving pull-up strength.",
+    "how_to": "Sit at the lat pulldown machine, thighs secured under pad.\nGrip the bar wider than shoulder-width, palms facing away.\nLean back slightly and pull the bar down to your upper chest.\nSqueeze your lats at the bottom.\nSlowly extend arms back to the top.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=CAwf7n6Luuc",
+    "res_name": "ic_ex_lat_pulldown.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_lat_pulldown.jpg"
+  },
+  {
+    "name": "Close-Grip Lat Pulldown",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Lats",
+    "calorie_rate": 0.28,
+    "description": "Neutral-grip lat pulldown variation that emphasizes lower lats and allows for a stronger pulling position.",
+    "how_to": "Attach a V-bar or close-grip handle.\nSit with thighs secured, grip the handle.\nPull down to upper chest, elbows travelling straight down.\nSqueeze lats at bottom, extend arms slowly.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=jdhf0oKZWE8",
+    "res_name": "ic_ex_close_grip_lat_pulldown.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_close_grip_lat_pulldown.jpg"
+  },
+  {
+    "name": "Seated Cable Row",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Back",
+    "calorie_rate": 0.28,
+    "description": "Seated cable row with a V-bar to build mid-back thickness and improve posture.",
+    "how_to": "Sit at the cable row machine, feet on the footrests.\nGrip the V-bar handle, sit tall.\nPull the handle to your lower abdomen, driving elbows back.\nSqueeze shoulder blades at the end.\nExtend arms forward with a slight forward lean.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=GZbfZ033f74",
+    "res_name": "ic_ex_seated_cable_row.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_seated_cable_row.jpg"
+  },
+  {
+    "name": "Pull-ups",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Back",
+    "calorie_rate": 0.4,
+    "description": "The gold standard of bodyweight pulling exercises. Overhand grip pull-up for lat width and upper back development.",
+    "how_to": "Hang from a bar with a wide overhand grip.\nPull your chest up toward the bar, leading with your elbows.\nChin clears the bar at the top.\nLower yourself with full control to a dead hang.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=aAggnpPyR6E",
+    "res_name": "ic_ex_pull_ups.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_pull_ups.jpg"
+  },
+  {
+    "name": "Chin-ups",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Back & Biceps",
+    "calorie_rate": 0.38,
+    "description": "Underhand grip pull-up that places more emphasis on the biceps and lower lats.",
+    "how_to": "Hang from a bar with a shoulder-width underhand grip.\nPull yourself up until your chin is above the bar.\nSqueeze at the top.\nLower with control to a dead hang.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=e1YSApl-QcM",
+    "res_name": "ic_ex_chin_ups.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_chin_ups.jpg"
+  },
+  {
+    "name": "Inverted Row",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Back",
+    "calorie_rate": 0.3,
+    "description": "The horizontal-pull bodyweight equivalent of a barbell or dumbbell row, using a fixed bar at an angle to your body.",
+    "how_to": "Set a bar at hip height in a rack, or use rings/a Smith machine.\nLie under the bar and grip it slightly wider than shoulder-width.\nKeep your body in a straight line from head to heels.\nPull your chest up to the bar, squeezing your shoulder blades together.\nLower with control to full arm extension. Walk feet further out to make it harder.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=Fl0UMfdEzsE",
+    "res_name": "ic_ex_inverted_row.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_inverted_row.jpg"
+  },
+  {
+    "name": "Face Pulls",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "",
+    "calorie_rate": 0.0,
+    "description": "",
+    "how_to": "",
+    "impact": "MEDIUM",
+    "youtube": "",
+    "res_name": "ic_ex_face_pulls.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_face_pulls.jpg"
+  },
+  {
+    "name": "Dumbbell Bicep Curls",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Biceps",
+    "calorie_rate": 0.18,
+    "description": "The classic bicep isolation exercise using dumbbells with a supinating grip for a full contraction.",
+    "how_to": "Stand holding dumbbells at your sides, palms facing forward.\nCurl the weights up toward your shoulders, rotating palms as you lift.\nSqueeze biceps at the top.\nLower slowly.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=ykJmrZ5v0Oo",
+    "res_name": "ic_ex_dumbbell_bicep_curls.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_bicep_curls.jpg"
+  },
+  {
+    "name": "Barbell Bicep Curl",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Biceps",
+    "calorie_rate": 0.2,
+    "description": "The heavy barbell curl for maximum bicep overload and strength building.",
+    "how_to": "Stand with a barbell, underhand grip shoulder-width apart.\nKeeping elbows at sides, curl the bar up to shoulder level.\nSqueeze at the top.\nLower slowly in a controlled manner.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=kwG2ipFRgfo",
+    "res_name": "ic_ex_barbell_bicep_curl.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_barbell_bicep_curl.jpg"
+  },
+  {
+    "name": "Hammer Curls",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Biceps & Brachialis",
+    "calorie_rate": 0.17,
+    "description": "Neutral-grip curl that targets the brachialis and brachioradialis, building arm thickness.",
+    "how_to": "",
+    "impact": "MEDIUM",
+    "youtube": "",
+    "res_name": "ic_ex_hammer_curls.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_hammer_curls.jpg"
+  },
+  {
+    "name": "Cable Bicep Curl",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Biceps",
+    "calorie_rate": 0.16,
+    "description": "Cable curl provides constant tension on the bicep throughout the entire range of motion.",
+    "how_to": "Attach a straight bar or EZ-bar to a low cable pulley.\nStand facing the machine and curl the bar up to shoulder level.\nSqueeze biceps at top.\nLower with controlled resistance.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=NFzTWp2qpiE",
+    "res_name": "ic_ex_cable_bicep_curl.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_cable_bicep_curl.jpg"
+  },
+  {
+    "name": "Preacher Curl",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Biceps",
+    "calorie_rate": 0.15,
+    "description": "Curling from a preacher bench pad isolates the bicep by eliminating body swing and cheating.",
+    "how_to": "Sit at a preacher bench, rest upper arms on the pad.\nGrip an EZ-bar or dumbbells.\nCurl the weight up to shoulder level, squeezing at the top.\nLower until arms are nearly extended.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=fIWP-FRFNU0",
+    "res_name": "ic_ex_preacher_curl.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_preacher_curl.jpg"
+  },
+  {
+    "name": "T-Bar Row",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Back",
+    "calorie_rate": 0.36,
+    "description": "A powerful back thickness exercise using a T-bar machine or landmine attachment.",
+    "how_to": "Stand over a T-bar or landmine, straddling the bar.\nGrip the handles and hinge forward.\nRow the weight toward your chest.\nSqueeze back muscles at the top.\nLower with control.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=KDEl3AmZbVE",
+    "res_name": "ic_ex_t_bar_row.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_t_bar_row.jpg"
+  },
+  {
+    "name": "Chest-Supported Row",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Back",
+    "calorie_rate": 0.32,
+    "description": "Row performed lying face-down on an incline bench, eliminating lower back stress and isolating the upper back.",
+    "how_to": "Set an incline bench to 45 degrees.\nLie face-down with chest on the pad.\nGrip dumbbells and let arms hang.\nRow both dumbbells up toward your hips.\nSqueeze shoulder blades, lower slowly.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=FTwvmczf7bE",
+    "res_name": "ic_ex_chest_supported_row.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_chest_supported_row.jpg"
+  },
+  {
+    "name": "Hollow Body Hold",
+    "category": "PULL",
+    "type": "HOLD",
+    "body_part": "Core",
+    "calorie_rate": 0.15,
+    "description": "Gymnastics-derived core strengthening hold that teaches full-body tension and a strong braced position.",
+    "how_to": "Lie on your back with arms extended overhead.\nPress your lower back firmly into the floor.\nLift your shoulder blades and legs slightly off the floor.\nKeep the core tight and body in a 'banana' shape. Hold.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=LlDNef_Ztsc",
+    "res_name": "ic_ex_hollow_body_hold.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_hollow_body_hold.jpg"
+  },
+  {
+    "name": "Shrugs",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Traps",
+    "calorie_rate": 0.15,
+    "description": "Shoulder shrug with a barbell or dumbbells to build the upper trapezius muscle.",
+    "how_to": "Hold barbell or dumbbells at arms' length in front of body.\nRaise shoulders directly upward as high as possible.\nHold briefly at the top.\nLower with control. Do not roll shoulders.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=cJRVVxmytaM",
+    "res_name": "ic_ex_shrugs.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_shrugs.jpg"
+  },
+  {
+    "name": "Dumbbell Upright Row",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Traps & Shoulders",
+    "calorie_rate": 0.18,
+    "description": "A vertical pulling movement with dumbbells that builds the traps and side delts.",
+    "how_to": "Stand holding a dumbbell in each hand in front of your thighs, palms facing you.\nKeeping the dumbbells close to your body, pull them straight up toward chest height.\nLead with your elbows, keeping them higher than the wrists.\nStop when your upper arms reach parallel; don't shrug past that.\nLower the dumbbells under control.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=K0dYqPCaO14",
+    "res_name": "ic_ex_dumbbell_upright_row.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_upright_row.jpg"
+  },
+  {
+    "name": "Barbell Upright Row",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Traps & Shoulders",
+    "calorie_rate": 0.2,
+    "description": "A vertical pulling movement with a barbell that builds the traps and side delts under a heavier, fixed load.",
+    "how_to": "Stand holding a barbell with an overhand grip, hands slightly less than shoulder-width apart.\nLet the bar rest against your thighs with arms extended.\nPull the bar straight up toward your chin, leading with your elbows.\nKeep the bar close to your body and elbows higher than wrists.\nStop around shoulder height, then lower with control.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=Ljq6ZW4NSTo",
+    "res_name": "ic_ex_barbell_upright_row.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_barbell_upright_row.jpg"
+  },
+  {
+    "name": "Concentration Curl",
+    "category": "PULL",
+    "type": "LIFT",
+    "body_part": "Biceps",
+    "calorie_rate": 0.15,
+    "description": "A seated single-arm dumbbell curl braced against the thigh that strictly isolates the biceps for a strong peak contraction.",
+    "how_to": "Sit on a bench holding a dumbbell, leaning slightly forward.\nRest the back of your working arm against the inside of your thigh.\nLet the dumbbell hang at arm's length, then curl it up toward your shoulder.\nSqueeze the biceps hard at the top.\nLower slowly to a full stretch. Keep the upper arm still throughout.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=0AUGkch3tzc",
+    "res_name": "ic_ex_concentration_curl.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_concentration_curl.jpg"
+  },
+  {
+    "name": "Barbell Back Squat",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads & Glutes",
+    "calorie_rate": 0.48,
+    "description": "The king of lower body exercises. Bar on your upper back, squat to parallel to build quads, glutes, and overall lower body power.",
+    "how_to": "Place barbell across upper traps, feet shoulder-width.\nBreath, brace core.\nPush knees out and descend until thighs are parallel to floor.\nDrive up through heels, push knees out.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=ultWZbUMPL8",
+    "res_name": "ic_ex_barbell_back_squat.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_barbell_back_squat.jpg"
+  },
+  {
+    "name": "Front Squat",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads",
+    "calorie_rate": 0.45,
+    "description": "Barbell squat with the bar held in a front rack position to emphasize the quadriceps and maintain a more upright torso.",
+    "how_to": "Rest barbell on front delts with elbows forward.\nFeet shoulder-width, toes slightly out.\nBreath and brace, descend keeping torso upright.\nDrive up through the whole foot.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=m4ytaCJZpl0",
+    "res_name": "ic_ex_front_squat.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_front_squat.jpg"
+  },
+  {
+    "name": "Dumbbell Squat",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads & Glutes",
+    "calorie_rate": 0.32,
+    "description": "",
+    "how_to": "",
+    "impact": "MEDIUM",
+    "youtube": "",
+    "res_name": "ic_ex_dumbbell_squat.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_squat.jpg"
+  },
+  {
+    "name": "Goblet Squat",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads & Glutes",
+    "calorie_rate": 0.3,
+    "description": "Holding a dumbbell or kettlebell at the chest while squatting. Great for beginners and high-rep work.",
+    "how_to": "Hold a dumbbell vertically at chest height.\nFeet shoulder-width, toes slightly out.\nSquat down keeping the dumbbell close to your body.\nDrive heels into floor to stand.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=MxsFDhcyFyE",
+    "res_name": "ic_ex_goblet_squat.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_goblet_squat.jpg"
+  },
+  {
+    "name": "Leg Press",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads",
+    "calorie_rate": 0.38,
+    "description": "Machine-based leg exercise allowing heavy loading with less spinal compression than barbell squats.",
+    "how_to": "Sit on the leg press machine with back flat against pad.\nPlace feet shoulder-width on the platform.\nRelease the safety, lower the weight by bending knees to 90 degrees.\nPress through your whole foot back to start. Don't lock knees.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=IZxyjW7MPJQ",
+    "res_name": "ic_ex_leg_press.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_leg_press.jpg"
+  },
+  {
+    "name": "Walking Lunges",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads & Glutes",
+    "calorie_rate": 0.3,
+    "description": "Dynamic lunge variation building unilateral leg strength, balance, and glute activation.",
+    "how_to": "Stand holding dumbbells at your sides.\nStep forward with one foot, lowering back knee toward the floor.\nPush off the front foot to bring rear foot forward.\nAlternate legs with each step.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=L8fvypPrzzs",
+    "res_name": "ic_ex_walking_lunges.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_walking_lunges.jpg"
+  },
+  {
+    "name": "Bulgarian Split Squat",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads & Glutes",
+    "calorie_rate": 0.35,
+    "description": "Single-leg squat with the rear foot elevated. One of the most effective unilateral leg exercises.",
+    "how_to": "Stand facing away from a bench, rear foot elevated on it.\nHold dumbbells at sides.\nLower your back knee toward the floor.\nKeep torso upright and drive up through front heel.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=2C-uNgKwPLE",
+    "res_name": "ic_ex_bulgarian_split_squat.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_bulgarian_split_squat.jpg"
+  },
+  {
+    "name": "Barbell Lunge",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads & Glutes",
+    "calorie_rate": 0.38,
+    "description": "A loaded lunge with a barbell on the back, building unilateral quad and glute strength under heavier load.",
+    "how_to": "Set a barbell across your upper back as you would for a squat.\nStep forward into a lunge, lowering your back knee toward the floor.\nKeep your torso upright and front knee tracking over the foot.\nDrive through the front heel to return to standing.\nAlternate legs each rep, bracing your core throughout.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=WEKqlj3Vtg8",
+    "res_name": "ic_ex_barbell_lunge.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_barbell_lunge.jpg"
+  },
+  {
+    "name": "Reverse Lunge",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads & Glutes",
+    "calorie_rate": 0.3,
+    "description": "A lunge stepping backward instead of forward, easier on the knees while still building the quads and glutes.",
+    "how_to": "Stand tall, optionally holding dumbbells at your sides.\nStep one foot back and lower until both knees are bent about 90 degrees.\nKeep most of your weight on the front foot.\nDrive through the front heel to return to standing.\nAlternate legs each rep.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=u_zSfK5ZFU4",
+    "res_name": "ic_ex_reverse_lunge.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_reverse_lunge.jpg"
+  },
+  {
+    "name": "Good Mornings",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Hamstrings",
+    "calorie_rate": 0.32,
+    "description": "A barbell hip-hinge with the bar on your back that strengthens the hamstrings, glutes, and lower back. Start light.",
+    "how_to": "Set a barbell across your upper back as in a low-bar squat.\nStand with feet hip-width and a soft bend in the knees.\nHinge at the hips, pushing them back and lowering your torso toward parallel.\nKeep your back flat and feel a stretch in the hamstrings.\nDrive your hips forward to return to standing.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=YA-h3n9L4YU",
+    "res_name": "ic_ex_good_mornings.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_good_mornings.jpg"
+  },
+  {
+    "name": "Dumbbell Romanian Deadlift",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Hamstrings",
+    "calorie_rate": 0.38,
+    "description": "Hip-hinge movement with dumbbells targeting the hamstrings and glutes through a long range of motion.",
+    "how_to": "Stand with dumbbells at hip level.\nHinge at hips, pushing them back, sliding weights down legs.\nFeel deep hamstring stretch.\nSqueeze glutes and drive hips forward to stand.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=QbbURJEUALw",
+    "res_name": "ic_ex_dumbbell_romanian_deadlift.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_romanian_deadlift.jpg"
+  },
+  {
+    "name": "Hip Thrust",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Glutes",
+    "calorie_rate": 0.28,
+    "description": "The premier glute-building exercise. Drive a loaded barbell upward using glute power while back is on a bench.",
+    "how_to": "Sit on the floor with your upper back against a bench.\nRoll a barbell over your hips with a pad.\nFeet flat on the floor, hip-width.\nDrive hips up by squeezing glutes.\nPause at the top, lower with control.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=xDmFkJxPzeM",
+    "res_name": "ic_ex_hip_thrust.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_hip_thrust.jpg"
+  },
+  {
+    "name": "Glute Bridge",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Glutes",
+    "calorie_rate": 0.18,
+    "description": "Bodyweight or loaded glute bridge for glute activation and hip extension strength.",
+    "how_to": "Lie on your back, knees bent, feet flat on floor.\nPush through your heels to raise your hips.\nSqueeze glutes at the top.\nLower your hips back down.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=OUgsJ8-Vi0E",
+    "res_name": "ic_ex_glute_bridge.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_glute_bridge.jpg"
+  },
+  {
+    "name": "Standing Calf Raise",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Calves",
+    "calorie_rate": 0.14,
+    "description": "Raise up on your toes to build the gastrocnemius calf muscle.",
+    "how_to": "Stand on the edge of a step or flat ground.\nRise up on your toes as high as possible.\nHold briefly at the top.\nLower your heels as far as comfortable below step level.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=SorIB5_zO9A",
+    "res_name": "ic_ex_standing_calf_raise.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_standing_calf_raise.jpg"
+  },
+  {
+    "name": "Seated Calf Raise",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Calves",
+    "calorie_rate": 0.12,
+    "description": "Machine or dumbbell calf raise done seated to target the soleus muscle.",
+    "how_to": "Sit with weight on your lower thighs.\nRaise your heels by pressing on the balls of your feet.\nFull extension at the top, full stretch at the bottom.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=JbyjNymZOt0",
+    "res_name": "ic_ex_seated_calf_raise.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_seated_calf_raise.jpg"
+  },
+  {
+    "name": "Sumo Deadlift",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Glutes & Hamstrings",
+    "calorie_rate": 0.46,
+    "description": "Wide-stance deadlift variation that places more emphasis on the inner thighs, glutes, and quads.",
+    "how_to": "Stand with feet wide, toes pointing outward.\nGrip the bar inside your legs.\nKeep chest tall and back flat.\nDrive through heels and push knees outward as you stand.\nLower with control.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=wQHSYDSgDn8",
+    "res_name": "ic_ex_sumo_deadlift.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_sumo_deadlift.jpg"
+  },
+  {
+    "name": "Dumbbell Sumo Deadlift",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Glutes & Hamstrings",
+    "calorie_rate": 0.4,
+    "description": "A wide-stance deadlift using a single dumbbell, emphasizing the inner thighs and glutes with a beginner-friendly setup.",
+    "how_to": "Stand over a dumbbell with feet wider than shoulder-width, toes pointed out.\nSquat down and grip the dumbbell with both hands in the center of your body.\nKeep your back flat and chest tall.\nDrive through your heels, pushing your knees outward as you stand.\nLower with control back to the floor.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=xgb_WrJ_xtw",
+    "res_name": "ic_ex_dumbbell_sumo_deadlift.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_dumbbell_sumo_deadlift.jpg"
+  },
+  {
+    "name": "Bodyweight Squats",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads & Glutes",
+    "calorie_rate": 0.22,
+    "description": "Simple unloaded squat for warm-ups, high-rep conditioning, or beginners.",
+    "how_to": "Stand feet shoulder-width, toes slightly out.\nLower hips until thighs parallel to floor.\nKeep chest up and knees over toes.\nStand back up.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=C_VtOYc6j5c",
+    "res_name": "ic_ex_bodyweight_squats.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_bodyweight_squats.jpg"
+  },
+  {
+    "name": "Step-ups",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Quads & Glutes",
+    "calorie_rate": 0.25,
+    "description": "Unilateral exercise stepping up onto a box to build quad and glute strength.",
+    "how_to": "Stand in front of a sturdy bench or box.\nStep up with one foot, pressing through heel to stand on the box.\nBring other foot up.\nStep back down one foot at a time. Alternate lead leg.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=dQqApCGd5Ss",
+    "res_name": "ic_ex_step_ups.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_step_ups.jpg"
+  },
+  {
+    "name": "Side Plank",
+    "category": "LOWER_BODY",
+    "type": "HOLD",
+    "body_part": "Core",
+    "calorie_rate": 0.12,
+    "description": "Lateral isometric hold targeting the obliques and lateral core stabilizers.",
+    "how_to": "Lie on your side with forearm on the floor, elbow under shoulder.\nStack your feet or place one in front.\nLift your hips off the floor to form a straight line.\nHold, keeping core tight and hips elevated.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=XeN4pEZZJNI",
+    "res_name": "ic_ex_side_plank.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_side_plank.jpg"
+  },
+  {
+    "name": "Ab Wheel Rollout",
+    "category": "LOWER_BODY",
+    "type": "LIFT",
+    "body_part": "Core",
+    "calorie_rate": 0.2,
+    "description": "One of the most effective core exercises. Rolling out with an ab wheel challenges anti-extension core strength.",
+    "how_to": "Kneel on the floor holding an ab wheel.\nRoll forward, extending your body toward the floor.\nGo as far as you can while maintaining tension.\nPull back using your core, not your arms.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=rqiTPdK1c_I",
+    "res_name": "ic_ex_ab_wheel_rollout.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_ab_wheel_rollout.jpg"
+  },
+  {
+    "name": "Jumping Jacks",
+    "category": "FULL_BODY",
+    "type": "CARDIO",
+    "body_part": "Full Body",
+    "calorie_rate": 8.0,
+    "description": "A classic full-body warm-up jump that raises the heart rate with zero equipment.",
+    "how_to": "Stand tall with feet together and arms at your sides.\nJump while spreading your feet wide and swinging your arms overhead.\nJump again to bring feet together and arms back down.\nKeep a steady rhythm and land softly on the balls of your feet.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=uLVt6u15L98",
+    "res_name": "ic_ex_jumping_jacks.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_jumping_jacks.jpg"
+  },
+  {
+    "name": "High Knees",
+    "category": "FULL_BODY",
+    "type": "CARDIO",
+    "body_part": "Full Body",
+    "calorie_rate": 9.0,
+    "description": "Running in place while driving the knees to hip height \u2014 a high-tempo heart-rate spiker.",
+    "how_to": "Stand tall with feet hip-width apart.\nRun in place, driving each knee up to hip height.\nPump your arms in rhythm and stay on the balls of your feet.\nKeep your core tight and torso upright throughout.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=WofWmk-4qU4",
+    "res_name": "ic_ex_high_knees.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_high_knees.jpg"
+  },
+  {
+    "name": "Burpees",
+    "category": "FULL_BODY",
+    "type": "CARDIO",
+    "body_part": "Full Body",
+    "calorie_rate": 10.0,
+    "description": "The all-in-one conditioning move: squat, plank, push-up, and jump in a single rep.",
+    "how_to": "",
+    "impact": "MEDIUM",
+    "youtube": "",
+    "res_name": "ic_ex_burpees.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_burpees.jpg"
+  },
+  {
+    "name": "Mountain Climbers",
+    "category": "FULL_BODY",
+    "type": "CARDIO",
+    "body_part": "Core & Full Body",
+    "calorie_rate": 9.0,
+    "description": "A plank-position sprint that torches the core while keeping the heart rate high.",
+    "how_to": "Start in a high plank, wrists under shoulders.\nDrive one knee toward your chest, then quickly switch legs.\nKeep your hips level and core braced \u2014 don't let them bounce.\nBuild up to a fast, running-like rhythm.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=cnyTQDSE884",
+    "res_name": "ic_ex_mountain_climbers.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_mountain_climbers.jpg"
+  },
+  {
+    "name": "Butt Kicks",
+    "category": "FULL_BODY",
+    "type": "CARDIO",
+    "body_part": "Hamstrings & Calves",
+    "calorie_rate": 8.0,
+    "description": "Jogging in place while kicking your heels to your glutes \u2014 great for pace and hamstring activation.",
+    "how_to": "Jog in place, kicking each heel up toward your glutes.\nKeep knees pointing down and torso upright.\nPump your arms as if running.\nIncrease the tempo as you warm up.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=oMW59TKZvaI",
+    "res_name": "ic_ex_butt_kicks.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_butt_kicks.jpg"
+  },
+  {
+    "name": "Skater Jumps",
+    "category": "FULL_BODY",
+    "type": "CARDIO",
+    "body_part": "Quads & Glutes",
+    "calorie_rate": 8.5,
+    "description": "Side-to-side speed-skater hops that build lateral power, balance, and conditioning.",
+    "how_to": "Stand on one leg with a slight knee bend.\nLeap sideways onto the other foot, swinging your arms across your body.\nLand softly, letting the trailing leg sweep behind you.\nImmediately push off to the other side and keep alternating.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=9_jLW6VkU8A",
+    "res_name": "ic_ex_skater_jumps.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_skater_jumps.jpg"
+  },
+  {
+    "name": "Running",
+    "category": "CARDIO",
+    "type": "CARDIO",
+    "body_part": "Cardio",
+    "calorie_rate": 10.0,
+    "description": "Steady-state or interval running for cardiovascular conditioning and calorie burn.",
+    "how_to": "Warm up with a brisk walk for 5 minutes.\nMaintain an upright posture with a slight forward lean.\nLand mid-foot, not heel.\nBreath rhythmically.\nCool down with a slow jog and stretch.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=_kGESn8ArrU",
+    "res_name": "ic_ex_running.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_running.jpg"
+  },
+  {
+    "name": "Walking",
+    "category": "CARDIO",
+    "type": "CARDIO",
+    "body_part": "Cardio",
+    "calorie_rate": 4.0,
+    "description": "Steady brisk walking for active recovery, low-impact cardio, and daily step count.",
+    "how_to": "Walk at a brisk, purposeful pace.\nSwing arms naturally.\nKeep shoulders relaxed and down.\nMaintain upright posture.",
+    "impact": "LOW",
+    "youtube": "https://www.youtube.com/watch?v=ZllXIKITzfg",
+    "res_name": "ic_ex_walking.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_walking.jpg"
+  },
+  {
+    "name": "Cycling",
+    "category": "CARDIO",
+    "type": "CARDIO",
+    "body_part": "Cardio",
+    "calorie_rate": 6.0,
+    "description": "Stationary bike or road cycling for lower-body cardio with minimal joint impact.",
+    "how_to": "Adjust seat height so knee has a slight bend at bottom of pedal stroke.\nPedal at a steady cadence of 70-90 RPM.\nMaintain a flat back and slight forward lean.\nBreathe consistently throughout.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=YeHSHwBXbAU",
+    "res_name": "ic_ex_cycling.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_cycling.jpg"
+  },
+  {
+    "name": "Rowing Machine",
+    "category": "CARDIO",
+    "type": "CARDIO",
+    "body_part": "Full Body",
+    "calorie_rate": 8.0,
+    "description": "Full-body cardio that simulates rowing and provides one of the highest calorie burns of any cardio machine.",
+    "how_to": "Sit on the seat and strap feet in.\nStart with legs bent, arms extended, leaning slightly forward.\nDrive with legs first, then lean back, then pull handle to lower chest.\nReverse: arms extend, body forward, knees bend.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=bqVgDaMsK8w",
+    "res_name": "ic_ex_rowing_machine.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_rowing_machine.jpg"
+  },
+  {
+    "name": "Jump Rope",
+    "category": "CARDIO",
+    "type": "CARDIO",
+    "body_part": "Cardio",
+    "calorie_rate": 11.0,
+    "description": "High-intensity cardio using a jump rope to improve coordination, footwork, and cardiovascular fitness.",
+    "how_to": "Hold handles with arms slightly bent, elbows near waist.\nSpin the rope using wrists, not arms.\nJump with both feet, clearing the rope with minimal air time.\nKeep a consistent rhythm.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=FJmRQ5iTXKE",
+    "res_name": "ic_ex_jump_rope.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_jump_rope.jpg"
+  },
+  {
+    "name": "Stair Climber",
+    "category": "CARDIO",
+    "type": "CARDIO",
+    "body_part": "Cardio",
+    "calorie_rate": 9.0,
+    "description": "Stair climbing machine that builds cardiovascular fitness and lower body endurance simultaneously.",
+    "how_to": "Step onto the machine and hold rails lightly for balance only.\nStep at a comfortable but challenging pace.\nMaintain upright posture, don't lean heavily on rails.\nKeep full foot contact on each step.",
+    "impact": "MEDIUM",
+    "youtube": "https://www.youtube.com/watch?v=SZU9Rm0sNOo",
+    "res_name": "ic_ex_stair_climber.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_stair_climber.jpg"
+  },
+  {
+    "name": "Battle Ropes",
+    "category": "CARDIO",
+    "type": "CARDIO",
+    "body_part": "Full Body",
+    "calorie_rate": 10.5,
+    "description": "High-intensity interval training using heavy ropes to challenge cardiovascular system and build power.",
+    "how_to": "Anchor ropes around a sturdy object. Stand in an athletic stance.\nGrip one end in each hand.\nCreate alternating waves by rapidly raising and lowering arms.\nKeep core engaged and knees slightly bent.",
+    "impact": "HIGH",
+    "youtube": "https://www.youtube.com/watch?v=pQb2xIGioyQ",
+    "res_name": "ic_ex_battle_ropes.jpg",
+    "has_image": true,
+    "rel_img_path": "app/src/main/res/drawable/ic_ex_battle_ropes.jpg"
+  }
+];
+
+        let currentCategory = 'ALL';
+        let searchQuery = '';
+
+        // Count category stats
+        const counts = { PUSH: 0, PULL: 0, LOWER_BODY: 0, FULL_BODY: 0, CARDIO: 0 };
+        exercises.forEach(ex => {
+            if (counts[ex.category] !== undefined) {
+                counts[ex.category]++;
+            }
+        });
+
+        document.getElementById('cnt-push').textContent = counts.PUSH;
+        document.getElementById('cnt-pull').textContent = counts.PULL;
+        document.getElementById('cnt-lower').textContent = counts.LOWER_BODY;
+        document.getElementById('cnt-full').textContent = counts.FULL_BODY;
+        document.getElementById('cnt-cardio').textContent = counts.CARDIO;
+        document.getElementById('total-count-badge').textContent = exercises.length + " Exercises";
+
+        function renderExercises() {
+            const grid = document.getElementById('exercise-grid');
+            grid.innerHTML = '';
+
+            const filtered = exercises.filter(ex => {
+                const matchesCat = (currentCategory === 'ALL') || (ex.category === currentCategory);
+                const query = searchQuery.toLowerCase();
+                const matchesSearch = ex.name.toLowerCase().includes(query) || 
+                                     ex.body_part.toLowerCase().includes(query) ||
+                                     ex.res_name.toLowerCase().includes(query);
+                return matchesCat && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="no-results">No matching exercises found.</div>';
+                return;
+            }
+
+            filtered.forEach(ex => {
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                const catBadgeClass = 'badge-' + ex.category;
+                const catDisplay = ex.category.replace('_', ' ');
+
+                card.innerHTML = `
+                    <div class="card-image-wrapper">
+                        <img src="${ex.rel_img_path}" alt="${ex.name}" loading="lazy" onerror="this.src='https://via.placeholder.com/200x200/1E2533/8A94A6?text=${encodeURIComponent(ex.name)}'">
+                        <div class="image-filename-tag">📷 ${ex.res_name}</div>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-header">
+                            <div class="exercise-title">${ex.name}</div>
+                            <span class="badge ${catBadgeClass}">${catDisplay}</span>
+                        </div>
+                        <div class="sub-badges">
+                            <span class="sub-badge">${ex.body_part}</span>
+                            <span class="sub-badge">${ex.type}</span>
+                            <span class="sub-badge">${ex.impact} Impact</span>
+                        </div>
+                        <div class="description">${ex.description}</div>
+                        ${ex.youtube ? `<a href="${ex.youtube}" target="_blank" rel="noopener" class="yt-link">▶ Watch Demo Video</a>` : ''}
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        // Filter button clicks
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentCategory = btn.getAttribute('data-cat');
+                renderExercises();
+            });
+        });
+
+        // Search input
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderExercises();
+        });
+
+        // Initial render
+        renderExercises();
+    </script>
+</body>
+</html>
