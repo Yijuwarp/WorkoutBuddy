@@ -198,8 +198,8 @@ Calories are estimated at workout completion using simplified metabolic equivale
 | `minSdk` | 24 (Android 7.0) |
 | `targetSdk` | 36 |
 | `jvmToolchain` | 17 |
-| `versionCode` | 7 |
-| `versionName` | 1.6 |
+| `versionCode` | 8 |
+| `versionName` | 1.7 |
 
 Key Gradle plugins:
 - `kotlin.serialization` – for navigation type-safe routes

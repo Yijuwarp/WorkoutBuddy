@@ -216,7 +216,7 @@ cd WorkoutBuddy
 | **Kotlin Coroutines** | Async operations & timers |
 | **Navigation3** | Compose navigation |
 | **KSP** | Kotlin Symbol Processing for Room code-gen |
-| **Version** | v1.6 (versionCode 7, DB schema v20) |
+| **Version** | v1.7 (versionCode 8, DB schema v20) |
 
 ---
 
