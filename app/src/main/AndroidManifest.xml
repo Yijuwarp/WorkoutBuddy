@@ -22,7 +22,7 @@
         android:theme="@style/Theme.WorkoutBuddy">
         <activity
             android:name=".MainActivity"
-            android:screenOrientation="portrait"
+            android:resizeableActivity="true"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
             <intent-filter>
