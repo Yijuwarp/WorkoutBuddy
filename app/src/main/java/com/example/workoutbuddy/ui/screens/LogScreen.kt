@@ -270,14 +270,14 @@ fun WorkoutQuickStats(
             QuickStatItem(
                 label = "+${String.format("%.1f", strengthGain)}",
                 subtext = "Strength",
-                labelColor = RedDangerLight
+                labelColor = StrengthRoseLight
             )
         }
         if (staminaGain > 0.0) {
             QuickStatItem(
                 label = "+${String.format("%.1f", staminaGain)}",
                 subtext = "Stamina",
-                labelColor = AmberWarning
+                labelColor = StaminaCyanLight
             )
         }
     }

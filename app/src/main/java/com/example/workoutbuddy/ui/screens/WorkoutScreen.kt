@@ -1096,14 +1096,20 @@ fun WorkoutSummaryDialog(
                                 label = "Strength",
                                 subtext = "Gained",
                                 modifier = Modifier.weight(1f),
-                                highlight = true
+                                highlight = true,
+                                highlightColor = StrengthRoseLight,
+                                highlightBg = StrengthRoseBg,
+                                highlightBorder = StrengthRoseBorder
                             )
                             StatBox(
                                 value = "+${String.format("%.1f", summary.staminaScoreDelta)}",
                                 label = "Stamina",
                                 subtext = "Gained",
                                 modifier = Modifier.weight(1f),
-                                highlight = true
+                                highlight = true,
+                                highlightColor = StaminaCyanLight,
+                                highlightBg = StaminaCyanBg,
+                                highlightBorder = StaminaCyanBorder
                             )
                         }
                     } else if (summary.strengthScoreDelta > 0.001) {
@@ -1112,7 +1118,10 @@ fun WorkoutSummaryDialog(
                             label = "Strength",
                             subtext = "Gained",
                             modifier = Modifier.fillMaxWidth(),
-                            highlight = true
+                            highlight = true,
+                            highlightColor = StrengthRoseLight,
+                            highlightBg = StrengthRoseBg,
+                            highlightBorder = StrengthRoseBorder
                         )
                     } else if (summary.staminaScoreDelta > 0.001) {
                         StatBox(
@@ -1120,7 +1129,10 @@ fun WorkoutSummaryDialog(
                             label = "Stamina",
                             subtext = "Gained",
                             modifier = Modifier.fillMaxWidth(),
-                            highlight = true
+                            highlight = true,
+                            highlightColor = StaminaCyanLight,
+                            highlightBg = StaminaCyanBg,
+                            highlightBorder = StaminaCyanBorder
                         )
                     }
                 }
@@ -1281,14 +1293,17 @@ fun StatBox(
     label: String,
     subtext: String,
     modifier: Modifier = Modifier,
-    highlight: Boolean = false
+    highlight: Boolean = false,
+    highlightColor: Color? = null,
+    highlightBg: Color? = null,
+    highlightBorder: Color? = null
 ) {
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = if (highlight) LightBlueContainer else LightBackground
+            containerColor = highlightBg ?: (if (highlight) LightBlueContainer else LightBackground)
         ),
-        border = BorderStroke(1.dp, if (highlight) BluePrimary.copy(alpha = 0.5f) else BorderLight)
+        border = BorderStroke(1.dp, highlightBorder ?: (if (highlight) BluePrimary.copy(alpha = 0.5f) else BorderLight))
     ) {
         Column(
             modifier = Modifier
@@ -1299,13 +1314,13 @@ fun StatBox(
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                color = if (highlight) GoldPR else TextDark
+                color = highlightColor ?: (if (highlight) GoldPR else TextDark)
             )
             Text(
                 text = label,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (highlight) TextBlue else TextMuted
+                color = highlightColor ?: (if (highlight) TextBlue else TextMuted)
             )
             Text(
                 text = subtext,

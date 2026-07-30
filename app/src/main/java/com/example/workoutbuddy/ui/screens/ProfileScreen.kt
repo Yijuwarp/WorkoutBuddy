@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -538,108 +540,242 @@ fun ProfileScoresCard(
     staminaScore: Double,
     modifier: Modifier = Modifier
 ) {
+    val rankTier = remember(strengthScore, staminaScore) {
+        WorkoutViewModel.deriveRankTier(strengthScore, staminaScore)
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = BorderStroke(
+            1.dp,
+            Brush.horizontalGradient(
+                colors = listOf(
+                    StrengthRoseBorder.copy(alpha = 0.4f),
+                    BorderLight,
+                    StaminaCyanBorder.copy(alpha = 0.4f)
+                )
+            )
+        )
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Rank badge + name on the left
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val rankTier = WorkoutViewModel.deriveRankTier(strengthScore, staminaScore)
-                Image(
-                    painter = painterResource(id = WorkoutViewModel.rankBadgeRes(rankTier)),
-                    contentDescription = "$rankTier rank badge",
-                    modifier = Modifier.size(48.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFF181C28),
+                            Color(0xFF141822)
+                        )
+                    )
                 )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = nickname,
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                        color = TextDark
-                    )
-                    Text(
-                        text = "Level: $rankTier",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                        color = TextMuted
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // 2 Scores on the right
+                .padding(18.dp)
+        ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Strength Score Group
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // Rank badge + name on the left
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(60.dp)
+                            .size(52.dp)
                             .clip(CircleShape)
-                            .background(RedDangerBg),
+                            .background(
+                                Brush.radialGradient(
+                                    colors = listOf(
+                                        BluePrimary.copy(alpha = 0.25f),
+                                        Color(0xFF1E2533)
+                                    )
+                                )
+                            )
+                            .border(
+                                BorderStroke(
+                                    1.5.dp,
+                                    Brush.sweepGradient(
+                                        listOf(
+                                            StrengthRoseBorder,
+                                            BluePrimary,
+                                            StaminaCyanBorder,
+                                            StrengthRoseBorder
+                                        )
+                                    )
+                                ),
+                                CircleShape
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "${strengthScore.toInt()}",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Black,
-                            color = RedDangerLight,
-                            lineHeight = 24.sp
+                        Image(
+                            painter = painterResource(id = WorkoutViewModel.rankBadgeRes(rankTier)),
+                            contentDescription = "$rankTier rank badge",
+                            modifier = Modifier.size(40.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "STRENGTH",
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextMuted,
-                        letterSpacing = 0.5.sp
-                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = nickname,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-0.5).sp
+                            ),
+                            color = TextDark
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = BluePrimary.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.3f))
+                        ) {
+                            Text(
+                                text = "LEVEL: ${rankTier.uppercase()}",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                color = TextBlue,
+                                letterSpacing = 0.5.sp,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
 
-                // Stamina Score Group
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // 2 Scores on the right
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .clip(CircleShape)
-                            .background(AmberWarningBgLight),
-                        contentAlignment = Alignment.Center
+                    // Strength Score Group
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "${staminaScore.toInt()}",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Black,
-                            color = AmberWarning,
-                            lineHeight = 24.sp
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color(0xFF4C1D24),
+                                            StrengthRoseBg
+                                        )
+                                    )
+                                )
+                                .border(
+                                    BorderStroke(1.5.dp, StrengthRoseBorder.copy(alpha = 0.85f)),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FitnessCenter,
+                                    contentDescription = null,
+                                    tint = StrengthRoseLight,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "${strengthScore.toInt()}",
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    lineHeight = 22.sp
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(5.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(4.dp)
+                                    .clip(CircleShape)
+                                    .background(StrengthRoseLight)
+                            )
+                            Text(
+                                text = "STRENGTH",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                color = StrengthRoseLight,
+                                letterSpacing = 0.8.sp
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "STAMINA",
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextMuted,
-                        letterSpacing = 0.5.sp
-                    )
+
+                    // Stamina Score Group
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color(0xFF0F3843),
+                                            StaminaCyanBg
+                                        )
+                                    )
+                                )
+                                .border(
+                                    BorderStroke(1.5.dp, StaminaCyanBorder.copy(alpha = 0.85f)),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FlashOn,
+                                    contentDescription = null,
+                                    tint = StaminaCyanLight,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "${staminaScore.toInt()}",
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    lineHeight = 22.sp
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(5.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(4.dp)
+                                    .clip(CircleShape)
+                                    .background(StaminaCyanLight)
+                            )
+                            Text(
+                                text = "STAMINA",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                color = StaminaCyanLight,
+                                letterSpacing = 0.8.sp
+                            )
+                        }
+                    }
                 }
             }
         }

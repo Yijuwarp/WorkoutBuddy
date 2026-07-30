@@ -37,3 +37,15 @@ val PerformanceRed = Color(0xFFFF4D5E)
 val BurnAmber = Color(0xFFFFB020)
 val PurpleAccent = Color(0xFFA855F7)
 
+// Strength & Stamina Option 1 Design Tokens
+val StrengthRose = Color(0xFFF43F5E)
+val StrengthRoseLight = Color(0xFFFB7185)
+val StrengthRoseBg = Color(0xFF2B1219)
+val StrengthRoseBorder = Color(0xFFE11D48)
+
+val StaminaCyan = Color(0xFF06B6D4)
+val StaminaCyanLight = Color(0xFF22D3EE)
+val StaminaCyanBg = Color(0xFF0A2128)
+val StaminaCyanBorder = Color(0xFF0891B2)
+val StaminaEmerald = Color(0xFF10B981)
+
